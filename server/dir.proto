@@ -1,0 +1,14 @@
+package ndnfs;
+
+message DirInfo
+{
+  required string path = 1;
+  required int32 type = 2;
+}
+
+message DirInfoArray
+{
+  repeated DirInfo di = 1;
+}
+
+

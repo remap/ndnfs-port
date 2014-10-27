@@ -1,0 +1,9 @@
+package ndnfs;
+
+message FileInfo
+{
+  required int32 size = 1;
+  required int32 totalseg = 2;
+  required int32 version = 3;
+}
+
