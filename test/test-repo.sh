@@ -2,7 +2,7 @@
 
 for i in `seq 1 100`;
 do
-    ../build/cat-file -n /wentao.shang/boost.zip -r >> temp.txt
+    ../build/cat-file -n /ndn/edu/ucla/remap/ndnfs/stupidfile.txt -r >> temp.txt
 done
 
 (cat temp.txt | grep Throughput) > repo.txt

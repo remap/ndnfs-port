@@ -27,9 +27,7 @@
 #include "file.pb.h"
 
 #include <iostream>
-//#include <fstream>
 #include <boost/chrono.hpp>
-
 
 using namespace std;
 using namespace ndn;

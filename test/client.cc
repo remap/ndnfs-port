@@ -17,7 +17,6 @@
  * Author: Qiuhan Ding <dingqiuhan@gmail.com>
  */
 
-
 #include <ndn-cpp/common.hpp>
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/interest.hpp>
@@ -91,16 +90,15 @@ void onTimeout(const ptr_lib::shared_ptr<const Interest>& origInterest) {
     done = true;
 }
 
-void Usage() {
-    fprintf(stderr, "usage: ./client [-n name]\n");
+void usage() {
+    fprintf(stderr, "Usage: ./client [-n name]\n");
     exit(1);
 }
 
 int main (int argc, char **argv) {
     ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
     interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
-    //interestPtr->setAnswerOriginKind(0);
-
+    
     const char* name = NULL;
 
     int opt;
@@ -112,7 +110,7 @@ int main (int argc, char **argv) {
             interestPtr->setName(ndn::Name(name));
             break;
         default: 
-            Usage();
+            usage();
             break;
         }
     }

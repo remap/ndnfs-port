@@ -17,7 +17,6 @@
  * Author: Wentao Shang <wentao@cs.ucla.edu>, Qiuhan Ding <dingqiuhan@gmail.com>
  */
 
-
 #include <ndn-cpp/common.hpp>
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/interest.hpp>
@@ -27,9 +26,7 @@
 #include "file.pb.h"
 
 #include <iostream>
-//#include <fstream>
 #include <boost/chrono.hpp>
-
 
 using namespace std;
 using namespace ndn;
@@ -146,7 +143,7 @@ int main (int argc, char **argv) {
 	int opt;
 	while ((opt = getopt(argc, argv, "n:r")) != -1) {
 		switch (opt) {
-        case 'n': 
+        case 'n':
             name = optarg;
             cout << "main(): set name: " << name << endl;
             break;

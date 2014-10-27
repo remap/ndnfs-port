@@ -6,6 +6,8 @@
 *.cc~
 *.h~
 
+test/*.txt
+test/*.sh
 
 .DS_Store
 .lock*
