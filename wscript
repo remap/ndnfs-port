@@ -5,8 +5,8 @@ APPNAME='NDNFS'
 from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
-    opt.add_option('--debug',action='store_true',default=False,dest='debug',help='''debugging mode''')
-    opt.add_option('--test', action='store_true',default=False,dest='_test',help='''build unit tests''')
+    opt.add_option('--debug',action='store_true',default=True,dest='debug',help='''debugging mode''')
+    opt.add_option('--test', action='store_true',default=True,dest='_test',help='''build unit tests''')
 
     # if Utils.unversioned_sys_platform () == "darwin":
     #     pass

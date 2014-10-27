@@ -45,12 +45,12 @@
 
 #include "config.h"
 
-extern ndn::KeyChain keychain;
 extern const char *db_name;
 extern sqlite3 *db;
 
 namespace ndnfs {
-    extern ndn::Name signer;
+    extern ndn::Name certificateName;
+    extern ndn::KeyChain keyChain;
     extern std::string global_prefix;
 
     extern const int dir_type;
