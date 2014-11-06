@@ -24,6 +24,8 @@
 #ifndef __SERVER_MODULE_H__
 #define __SERVER_MODULE_H__
 
+#define NDNFS_DEBUG
+
 #include <string>
 
 #include <ndn-cpp/face.hpp>

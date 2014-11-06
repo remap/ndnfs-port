@@ -59,11 +59,11 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
     case O_RDWR:
       // Create temporary version for file editing
         
-      // If there is already a temp version there, it means that some one is writing to the file now
+      // If there is already a temp version there, it means that someone is writing to the file now
       // We should reject this open request
       // This effectively implements some sort of file locking
       if (temp_ver != -1)
-	return -EACCES;
+        return -EACCES;
 
       // Create a new version number for temp_ver based on system time
       temp_ver = time(0);
@@ -71,7 +71,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
       // Copy old data from current version to the temp version
       // An version entry for temp_ver will be inserted in this function
       if (duplicate_version (path, curr_ver, temp_ver) < 0)
-	return -EACCES;
+        return -EACCES;
 
       // Update file entry with temp version info
       sqlite3_prepare_v2 (db, "UPDATE file_system SET atime = ?, temp_version = ? WHERE path = ?;", -1, &stmt, 0);
@@ -82,7 +82,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
       sqlite3_finalize (stmt);
 
       if (res != SQLITE_OK && res != SQLITE_DONE)
-	return -EACCES;
+        return -EACCES;
 
       break;
     default:
