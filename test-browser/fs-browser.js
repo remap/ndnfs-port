@@ -1,9 +1,10 @@
 // TODO: 
-// 1. Now the client cannot tell the difference between empty directory and request timeout, need to modify server
+// 1. Now the client cannot tell the difference between empty directory and request timeout, need to modify server.
 // 2. ndnfs-server's CPU consumption always goes extraordinarily high, after running for sometime.
 // 3. According to current server protocol design, the client should store what it's expecting, whether it's file or folder. 
 // 4. Current server protocol does not transfer modified time or file size by default, need to think whether it should do so.
-// 5. Fetching file (with versions and segments)
+// 5. Fetching file (with versions and segments).
+// 6. Current directory display.
 
 // NDN communication functions
 var face = new Face();

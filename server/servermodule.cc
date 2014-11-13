@@ -191,6 +191,16 @@ void processInterest(const Name& interest_name, Transport& transport) {
     }
 }
 
+string removeStartingSlash(string path)
+{
+	if (path.c_str()[0] == '/') {
+		return path.substr(1);
+	}
+	else {
+		return path;
+	}
+}
+
 void sendFile(const string& path, int version, int sizef, int totalseg, Transport& transport) {
     ndnfs::FileInfo infof;
     infof.set_size(sizef);
@@ -201,13 +211,19 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     char *wireData = new char[size];
     infof.SerializeToArray(wireData, size);
     Name name(global_prefix);
-    name.append(path).append("%C1.FS.file").appendVersion(version);
+    
+    // The path does contain the beginning '/', which may confuse append.
+    string filePath = removeStartingSlash(path);
+    
+    name.append(filePath).append("%C1.FS.file").appendVersion(version);
     Data data0;
     data0.setName(name);
     data0.setContent((uint8_t*)wireData, size);
     
     keyChain.sign(data0, certificateName);
     transport.send(*data0.wireEncode());
+    
+    cout << "Data returned with name: " << name.toUri() << endl;
     
     delete wireData;
     return;
