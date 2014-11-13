@@ -200,12 +200,12 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     
     char *wireData = new char[size];
     infof.SerializeToArray(wireData, size);
-    Name name(global_prefix + path);
-    name.append("%C1.FS.file").appendVersion(version);
+    Name name(global_prefix);
+    name.append(path).append("%C1.FS.file").appendVersion(version);
     Data data0;
     data0.setName(name);
     data0.setContent((uint8_t*)wireData, size);
-    //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
+    
     keyChain.sign(data0, certificateName);
     transport.send(*data0.wireEncode());
     
@@ -228,7 +228,7 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         count++;
     }
     sqlite3_finalize(stmt);
-    //return packet
+    
     if (count != 0) {
         int size = infoa.ByteSize();
         char *wireData = new char[size];

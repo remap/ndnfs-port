@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     // Initialize the keychain
     ndnfs::certificateName = ndnfs::keyChain.getDefaultCertificateName();
     
-    ndnfs::global_prefix = "/ndn/edu/ucla/remap/ndnfs";
+    ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
     
     cout << "main: NDNFS version 0.3" << endl;
 

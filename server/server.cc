@@ -39,7 +39,7 @@ using namespace ndn;
 const char *db_name = "/tmp/ndnfs.db";
 sqlite3 *db;
 
-Face face("localhost");
+Face face;
 KeyChain keyChain;
 Name certificateName;
 
@@ -48,7 +48,7 @@ string global_prefix;
 int main(int argc, char **argv) {
     certificateName = keyChain.getDefaultCertificateName();
     face.setCommandSigningInfo(keyChain, certificateName);
-    const char* prefix = "/ndn/edu/ucla/remap/ndnfs";
+    const char* prefix = "/ndn/broadcast/ndnfs";
 
     int opt;
     while ((opt = getopt(argc, argv, "p:d:")) != -1) {
