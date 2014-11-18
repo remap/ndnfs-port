@@ -20,7 +20,7 @@
  * Author: Zhehao Wang, based on the work of
  * Qiuhan Ding <dingqiuhan@gmail.com>, Wentao Shang <wentao@cs.ucla.edu>
  */
-
+ 
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -215,7 +215,9 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     // The path does contain the beginning '/', which may confuse append.
     string filePath = removeStartingSlash(path);
     
-    name.append(filePath).append("%C1.FS.file").appendVersion(version);
+    // append right now escapes '/' in file path, need fix.
+    Blob ndnfsFileComponent = Name::fromEscapedString("%C1.FS.file");
+    name.append(filePath).append(ndnfsFileComponent).appendVersion(version);
     Data data0;
     data0.setName(name);
     data0.setContent((uint8_t*)wireData, size);
@@ -250,7 +252,9 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         char *wireData = new char[size];
         infoa.SerializeToArray(wireData, size);
         Name name(global_prefix + path);
-        name.append("%C1.FS.dir").appendVersion(mtime);
+        
+        Blob ndnfsDirComponent = Name::fromEscapedString("%C1.FS.dir");
+        name.append(ndnfsDirComponent).appendVersion(mtime);
         Data data0;
         data0.setName(name);
         data0.setContent((uint8_t*)wireData, size);
