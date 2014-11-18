@@ -17,6 +17,9 @@
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
  */
+ 
+// Since the file gets stored as Data(Blob) into sqlite, whose name would not be changeable,
+// so the fs should not use a different prefix, or all files before that prefix would become unsolicited data.
 
 #include "ndnfs.h"
 #include "directory.h"

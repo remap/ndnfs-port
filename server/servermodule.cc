@@ -191,16 +191,6 @@ void processInterest(const Name& interest_name, Transport& transport) {
     }
 }
 
-string removeStartingSlash(string path)
-{
-	if (path.c_str()[0] == '/') {
-		return path.substr(1);
-	}
-	else {
-		return path;
-	}
-}
-
 void sendFile(const string& path, int version, int sizef, int totalseg, Transport& transport) {
     ndnfs::FileInfo infof;
     infof.set_size(sizef);
@@ -212,12 +202,14 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     infof.SerializeToArray(wireData, size);
     Name name(global_prefix);
     
-    // The path does contain the beginning '/', which may confuse append.
-    string filePath = removeStartingSlash(path);
+    // sendDir is using string concatenation instead
+    Name fileName(path);
+    for (int i = 0; i < fileName.size(); i++) {
+        name.append(fileName.get(i));
+    }
     
-    // append right now escapes '/' in file path, need fix.
     Blob ndnfsFileComponent = Name::fromEscapedString("%C1.FS.file");
-    name.append(filePath).append(ndnfsFileComponent).appendVersion(version);
+    name.append(ndnfsFileComponent).appendVersion(version);
     Data data0;
     data0.setName(name);
     data0.setContent((uint8_t*)wireData, size);
@@ -251,6 +243,8 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         int size = infoa.ByteSize();
         char *wireData = new char[size];
         infoa.SerializeToArray(wireData, size);
+        
+        // string concatenation works here; 
         Name name(global_prefix + path);
         
         Blob ndnfsDirComponent = Name::fromEscapedString("%C1.FS.dir");
