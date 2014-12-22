@@ -272,11 +272,12 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	buf_pos += copy_len;
 	size_left -= copy_len;
   }
-
+  
 out:
   int total_seg = seg_off > old_total_seg ? seg_off : old_total_seg;
   
-  update_fbi (path, ver, total_seg - 1);
+  // final block ID is deprecated, and this function should be reengineered
+  //update_fbi (path, ver, total_seg - 1);
 
   int ver_size = (int) (offset + size);
   // The new total size should be the maximum of old size and (size + offset)

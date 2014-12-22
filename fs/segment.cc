@@ -182,6 +182,8 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
+    cout << "write segment called" << endl;
+
     // we'll need to put this new version of the file into the file system,
     // instead of putting it into the sqlite database
     int fd;
@@ -193,10 +195,14 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
 	bzero(actualPath, pathSize);
 	
 	make_path(actualPath, path, ver, pathSize);
-        
+    
+    cout << "About to write into " << actualPath << endl;
+    
     // error output not included
 	fd = open(actualPath, O_WRONLY);
 	res = pwrite(fd, data, len, segment_to_size(seg));
+
+    cout << "After calling pwrite" << endl;
 
 	close(fd);
     delete actualPath;
