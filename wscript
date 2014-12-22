@@ -102,6 +102,13 @@ def build (bld):
         use = 'BOOST NDNCPP',
         includes = 'server'
         )
+    bld (
+        target = "fuse-test",
+        features = ["cxx", "cxxprogram"],
+        source = 'fuse-sample/main.cpp',
+        use = 'FUSE',
+        includes = '.'
+        )
 
 @Configure.conf
 def add_supported_cxxflags(self, cxxflags):

@@ -125,11 +125,10 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
   sqlite3_prepare_v2 (db, "SELECT size, totalSegments FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_bind_int (stmt, 2, from_ver);
-  if (sqlite3_step (stmt) != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return -1;
-    }
+  if (sqlite3_step (stmt) != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -1;
+  }
   int ver_size = sqlite3_column_int (stmt, 0);
   int total_seg = sqlite3_column_int (stmt, 1);
   
@@ -137,31 +136,29 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
   const char *seg_raw;
   int data_len;
   const char *data;
-  for (int i = 0; i < total_seg; i++)
-    {
-      // Copy each segment
-      sqlite3_finalize (stmt);
-      sqlite3_prepare_v2 (db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-      sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-      sqlite3_bind_int (stmt, 2, from_ver);
-      sqlite3_bind_int (stmt, 3, i);
-      if (sqlite3_step (stmt) != SQLITE_ROW)
-	{
+  for (int i = 0; i < total_seg; i++) {
+	// Copy each segment
+	sqlite3_finalize (stmt);
+	sqlite3_prepare_v2 (db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
+	sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
+	sqlite3_bind_int (stmt, 2, from_ver);
+	sqlite3_bind_int (stmt, 3, i);
+	if (sqlite3_step (stmt) != SQLITE_ROW) {
 	  sqlite3_finalize (stmt);
 	  return -1;
 	}
-		
-      seg_raw = (const char *) sqlite3_column_blob (stmt, 3);
-      seg_len = sqlite3_column_bytes (stmt, 3);
-		
-      Data seg;
-      seg.wireDecode ((const uint8_t*) seg_raw, seg_len);
-      const Blob& seg_content = seg.getContent ();
-      data_len = seg_content.size ();
-      data = (const char*) seg_content.buf ();
-		
-      make_segment (path, to_ver, i, data, data_len);
-    }
+
+	seg_raw = (const char *) sqlite3_column_blob (stmt, 3);
+	seg_len = sqlite3_column_bytes (stmt, 3);
+	  
+	Data seg;
+	seg.wireDecode ((const uint8_t*) seg_raw, seg_len);
+	const Blob& seg_content = seg.getContent ();
+	data_len = seg_content.size ();
+	data = (const char*) seg_content.buf ();
+	  
+	write_segment (path, to_ver, i, data, data_len);
+  }
 
   // Insert "to" version entry
   sqlite3_finalize (stmt);
@@ -254,7 +251,7 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	// The final size of this segment content is the maximum of the old size and the new size
 	int updated_seg_len = tail + copy_len;
 	updated_seg_len = seg_content_len > updated_seg_len ? seg_content_len : updated_seg_len;
-	make_segment (path, ver, seg_off++, data, updated_seg_len);
+	write_segment (path, ver, seg_off++, data, updated_seg_len);
 	delete data;
 	  
 	if (final) {
@@ -271,7 +268,7 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	if (copy_len > size_left)
 	  copy_len = size_left;
 
-	make_segment (path, ver, seg_off++, buf_pos, copy_len);
+	write_segment (path, ver, seg_off++, buf_pos, copy_len);
 	buf_pos += copy_len;
 	size_left -= copy_len;
   }

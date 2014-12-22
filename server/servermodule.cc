@@ -126,6 +126,11 @@ void processInterest(const Name& interest_name, Transport& transport) {
         }
         cout << endl;
 #endif
+        // whenever an interest for a segment's received, the whole data read from db
+        // is sent directly; here instead of resending directly, we'll need to 
+        // reassemble the thing...should I call fuse_read to read starting from a 
+        // specific offset?
+        
         transport.send((uint8_t*)data, len);
 #ifdef NDNFS_DEBUG
         cout << "processName(): content object returned and interest consumed" << endl;

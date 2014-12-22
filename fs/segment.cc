@@ -26,8 +26,20 @@
 #include <iostream>
 #include <cstdio>
 
+#define INT2STRLEN 100
+
 using namespace std;
 using namespace ndn;
+
+void make_path(char* output, const char* path, const int ver, int pathSize)
+{
+	strcpy(output, path);
+    strcat(output, ".");
+    
+    char versionStr[INT2STRLEN] = "";
+	sprintf(versionStr, "%d", ver);
+    strcat(output, versionStr);
+}
 
 int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset)
 {
@@ -35,8 +47,11 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
     cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
 #endif
 
-    const char*co_raw;
-    int co_size;
+// Ordinary read does not care about ndn signature
+/*
+    const char *sig_raw;
+    int sig_size;
+    
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
     sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
@@ -47,20 +62,24 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
         return -1;
     }
 
-    co_raw = (const char*) sqlite3_column_blob(stmt, 3);
-    co_size = sqlite3_column_bytes(stmt, 3);
+    sig_raw = (const char*) sqlite3_column_blob(stmt, 3);
+    sig_size = sqlite3_column_bytes(stmt, 3);
 
+    
     Data data;
-    data.wireDecode((const uint8_t*)co_raw, co_size);
+    data.wireDecode((const uint8_t*)sig_raw, sig_size);
     const uint8_t *content = data.getContent().buf();
-
+    
+    // we should just read from the file, assembling a data packet with the signature
+    // stored in sqlite should be left for the servermodule to do.
+    
 #ifdef NDNFS_DEBUG
-    //cout << "read_segment: raw data is " << endl;
-    //for (int i = 0; i < co_size; i++) {
-    //    cout << co_raw[i];
-    //}
-    //cout << endl;
-    //cout << "read_segment: raw data length is " << co_size << endl;
+    cout << "read_segment: raw signature is " << endl;
+    for (int i = 0; i < sig_size; i++) {
+        cout << sig_raw[i];
+    }
+    cout << endl;
+    cout << "read_segment: raw signature length is " << sig_size << endl;
 #endif
 
     size_t copy_len = data.getContent().size();
@@ -74,19 +93,38 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
     cout << endl;
     cout << "read_segment: copy length is " << copy_len << endl;
 #endif
-
-    memcpy(output, content + offset, copy_len);
-    
     sqlite3_finalize(stmt);
+*/
+
+    // ordinary read tries to see if there's such a file in the file system
+	int fd;
+	int res;
     
-    return copy_len;
+    int pathSize = strlen(path) + INT2STRLEN;
+    char * actualPath = (char*)malloc(pathSize);
+	bzero(actualPath, pathSize);
+	
+	make_path(actualPath, path, ver, pathSize);
+    
+	fd = open(actualPath, O_RDONLY);
+	
+	int readLen = ndnfs::seg_size;
+	if (readLen > limit) {
+	  readLen = limit;
+	}
+	
+	res = pread(fd, output, readLen, offset);
+	close(fd);
+	delete actualPath;
+    
+    return readLen;
 }
 
 
-int make_segment(const char* path, const int ver, const int seg, const char *data, const int len)
+int write_segment(const char* path, const int ver, const int seg, const char *data, const int len)
 {
 #ifdef NDNFS_DEBUG
-    cout << "make_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
+    cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
 #endif
 
     assert(len > 0);
@@ -108,37 +146,61 @@ int make_segment(const char* path, const int ver, const int seg, const char *dat
     seg_name.appendVersion(ver);
     seg_name.appendSegment(seg);
 #ifdef NDNFS_DEBUG
-    cout << "make_segment: segment name is " << seg_name.toUri() << endl;
+    cout << "write_segment: segment name is " << seg_name.toUri() << endl;
 #endif
 
     Data data0;
     data0.setName(seg_name);
     data0.setContent((const uint8_t*)data, len);
     //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
+    
+    // instead of putting the whole content object into sqlite, we put only the signature field.
     ndnfs::keyChain.sign(data0, ndnfs::certificateName);
-    SignedBlob wire_data = data0.wireEncode();
-    const char* co_raw = (const char*)wire_data.buf();
-    int co_size = wire_data.size();
+    Blob signature = data0.getSignature()->getSignature();
+    
+    const char* sig_raw = (const char*)signature.buf();
+    int sig_size = strlen(sig_raw);
 
 #ifdef NDNFS_DEBUG
-    //cout << "make_segment: raw data is" << endl;
-    //for (int i = 0; i < co_size; i++) {
-    //    printf("%02x", (unsigned char)co_raw[i]);
-    //}
-    //cout << endl;
-    //cout << "make_segment: raw data length is " << co_size << endl;
+    cout << "write_segment: raw signature is" << endl;
+    for (int i = 0; i < sig_size; i++) {
+	  printf("%02x", (unsigned char)sig_raw[i]);
+    }
+    cout << endl;
+    cout << "write_segment: raw signature length is " << sig_size << endl;
 #endif
 
     sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,data,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
+    sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
     sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
     sqlite3_bind_int(stmt,2,ver);
     sqlite3_bind_int(stmt,3,seg);
-    sqlite3_bind_blob(stmt,4,co_raw,co_size,SQLITE_STATIC);
+    
+    sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
+    
     sqlite3_bind_int(stmt,5,segment_to_size(seg));
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
+    // we'll need to put this new version of the file into the file system,
+    // instead of putting it into the sqlite database
+    int fd;
+	int res;
+	// pathSize should be large enough to contain [path].[ver.toString]
+	// versionStr length should be replaced
+	int pathSize = strlen(path) + INT2STRLEN;
+	char * actualPath = (char*)malloc(pathSize);
+	bzero(actualPath, pathSize);
+	
+	make_path(actualPath, path, ver, pathSize);
+        
+    // error output not included
+	fd = open(actualPath, O_WRONLY);
+	res = pwrite(fd, data, len, segment_to_size(seg));
+
+	close(fd);
+    delete actualPath;
+    
     return 0;
 }
 
@@ -195,7 +257,7 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
             int co_size = sqlite3_column_bytes(stmt, 3);
 
             assert(co_size > (int)length);
-
+            
             Data data;
             data.wireDecode((const uint8_t*)co_raw, co_size);
             const uint8_t *content = data.getContent().buf();

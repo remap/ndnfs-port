@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS                                        \n\
     path        TEXT NOT NULL,                                    \n\
     version     INTEGER,                                          \n\
     segment     INTEGER,                                          \n\
-    data        BLOB NOT NULL,                                    \n\
+    signature   BLOB NOT NULL,                                    \n\
     offset      INTEGER,                                          \n\
     PRIMARY KEY (path, version, segment)                          \n\
   );                                                              \n\
