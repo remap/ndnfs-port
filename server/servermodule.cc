@@ -65,11 +65,8 @@ void parseName(const ndn::Name& name, int &version, int &seg, string &path) {
     ostringstream oss;
     ndn::Name::const_iterator iter = name.begin();
     for (; iter != name.end(); iter++) {
-#ifdef NDNFS_DEBUG
-        cout << "ndnName2String(): interest name component: " << iter->toEscapedString() << endl;
-#endif
         const uint8_t marker = *(iter->getValue().buf());
-        //cout << (unsigned int)marker << endl;
+        
         if (marker == 0xFD) {
             version = iter->toVersion(); 
         }
@@ -85,15 +82,10 @@ void parseName(const ndn::Name& name, int &version, int &seg, string &path) {
         }
     }
     path = oss.str();
-#ifdef NDNFS_DEBUG
-    cout << "ndnName2String(): full path: " << path << endl;
-#endif
+
     path = path.substr(global_prefix.length());
     if (path == "")
         path = string("/");
-#ifdef NDNFS_DEBUG
-    cout << "ndnName2String(): file path after removing global prefix: " << path << endl;
-#endif
 }
 
 void processInterest(const Name& interest_name, Transport& transport) {
@@ -126,7 +118,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
         // sqlite database
         const char * signatureBlob = (const char *)sqlite3_column_blob(stmt, 3);
         int len = sqlite3_column_bytes(stmt, 3);
-        
+        sqlite3_finalize(stmt);
 #ifdef NDNFS_DEBUG
         cout << "processName(): blob signature length=" << len << endl;
         cout << "processName(): blob signature is " << endl;
@@ -147,23 +139,31 @@ void processInterest(const Name& interest_name, Transport& transport) {
 
         // When assembling the data packet, finalblockid should be put into each segment,
         // this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
-        sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
-        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_int(stmt, 2, version);
-        if(sqlite3_step(stmt) != SQLITE_ROW){
-            sqlite3_finalize(stmt);
+        
+        sqlite3_stmt *stmt2;
+        sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt2, 0);
+        sqlite3_bind_text(stmt2, 1, path.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_int(stmt2, 2, version);
+        if(sqlite3_step(stmt2) != SQLITE_ROW){
+            sqlite3_finalize(stmt2);
             return;
         }
 		
-		int totalSegmentNumber = sqlite3_column_int(stmt,3);
+		int totalSegmentNumber = sqlite3_column_int(stmt2,3);
+        sqlite3_finalize(stmt2);
+        
+        cout << "totalSegment number is " << totalSegmentNumber << endl;
         
         if (totalSegmentNumber > 0) {
-		  Name::Component finalBlockId = Name::Component::fromNumber(totalSegmentNumber - 1);
+          // in the JS plugin, finalBlockId component is parsed with toSegment
+          // not sure if it's supposed to be like this in other ndn applications,
+          // if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
+		  Name::Component finalBlockId = Name::Component::fromNumberWithMarker(totalSegmentNumber - 1, 0x00);
 		  data.getMetaInfo().setFinalBlockId(finalBlockId);
         }
         
         int fd;
-		// Opening here has clue that the path is relative to fs_path
+		// Opening in server module has clue that the path is relative to fs_path
 		char fullPath[FULLLEN] = "";
 		strcpy(fullPath, fs_path);
 		strcat(fullPath, path.c_str());
@@ -182,6 +182,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 		
 		char output[BLOCKSIZE] = "";
 		
+		cout << "Trying to read file " << fullPath << " from " << offset << " for " << readLen << " bytes." << endl;
 		int actualLen = pread(fd, output, readLen, offset);
 	    
 		close(fd);
@@ -200,14 +201,13 @@ void processInterest(const Name& interest_name, Transport& transport) {
 #ifdef NDNFS_DEBUG
         cout << "processName(): content object returned and interest consumed" << endl;
 #endif
-        sqlite3_finalize(stmt);
     }
     else if (version != -1 && seg == -1) {
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
         sqlite3_bind_int(stmt, 2, version);
-        if(sqlite3_step(stmt) != SQLITE_ROW){
+        if (sqlite3_step(stmt) != SQLITE_ROW){
 #ifdef NDNFS_DEBUG
             cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
 #endif
@@ -231,7 +231,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
         }
         
         int type = sqlite3_column_int(stmt,2);
-        if(type == 1){
+        if (type == 1){
 #ifdef NDNFS_DEBUG
             cout << "processName(): found file: " << path << endl;
 #endif
@@ -283,7 +283,7 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     Data data0;
     data0.setName(name);
     
-    Name::Component finalBlockId = Name::Component::fromNumber(totalseg - 1);
+    Name::Component finalBlockId = Name::Component::fromNumberWithMarker(totalseg - 1, 0x00);
     
     data0.getMetaInfo().setFinalBlockId(finalBlockId);
     data0.setContent((uint8_t*)wireData, size);

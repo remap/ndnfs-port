@@ -116,6 +116,9 @@ int main(int argc, char **argv)
     cout << "main: init tables in sqlite db..." << endl;
     
     // Init tables in database
+    
+    // Since actual data is not stored in database,
+    // for each re-run, does it make sense to recreate the table no matter if it already exists.
     const char* INIT_FS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                        \n\
   file_system(                                    \n\

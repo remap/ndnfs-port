@@ -241,7 +241,7 @@ out:
   int ver_size = (int) (offset + size);
   // The new total size should be the maximum of old size and (size + offset)
   ver_size = ver_size > old_ver_size ? ver_size : old_ver_size;
-
+  
   // Update temp version entry
   sqlite3_finalize (stmt);
   sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? AND version = ?;", -1, &stmt, 0);

@@ -77,9 +77,7 @@ void onMetaData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
             cout << "Start to fetch file segments..." << endl;
 
             ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-            interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
             interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
-            //interestPtr->setAnswerOriginKind(0);
 
             start = high_resolution_clock::now();
             handler.expressInterest(*interestPtr, onFileData, onTimeout);
@@ -93,16 +91,10 @@ void onMetaData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
 }
 
 void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data) {
-    //const Blob& content = data->getContent();
     const Name& data_name = data->getName();
-    //cout << "Segment received: " << data_name.toUri() << endl;
-    //cout << "    data: " << string((char*)content.buf(), content.size()) << endl;
-    //for (int i = 0; i < content.size(); i++) {
-    //    ofs << content[i];
-    //}
-
+    cout << "FinalBlockId : " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
+    
     current_seg = (int)(data_name.rbegin()->toSegment());
-    //cout << current_seg << endl;
     current_seg++;  // segments are zero-indexed
     if (current_seg == total_seg) {
         stdtime stop = high_resolution_clock::now();
@@ -116,8 +108,7 @@ void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
         ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
         interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
         interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
-        //interestPtr->setAnswerOriginKind(0);    
-
+        
         handler.expressInterest(*interestPtr, onFileData, onTimeout);
     }
 }
@@ -127,15 +118,13 @@ void onTimeout (const ptr_lib::shared_ptr<const Interest>& origInterest) {
     done = true;
 }
 
-void Usage () {
+void usage () {
 	fprintf(stderr, "usage: ./cat_file [-n name]\n");
 	exit(1);
 }
 
-
 int main (int argc, char **argv) {
     ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-    interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
 
 	const char* name = NULL;
     bool repo_mode = false;
@@ -152,7 +141,7 @@ int main (int argc, char **argv) {
             repo_mode = true;
             break;
         default: 
-            Usage(); 
+            usage(); 
             break;
         }
 	}
@@ -168,7 +157,8 @@ int main (int argc, char **argv) {
         start = high_resolution_clock::now();
         handler.expressInterest(*interestPtr, onFileData, onTimeout);
     } else {
-        interestPtr->setName(Name(name).append("%C1.FS.file"));
+        // this does not escape the %
+        interestPtr->setName(Name(name).append(Name::fromEscapedString("%C1.FS.file")));
         //interestPtr->setAnswerOriginKind(0);
         handler.expressInterest(*interestPtr, onMetaData, onTimeout);
 	}
@@ -177,7 +167,7 @@ int main (int argc, char **argv) {
 
 	while (!done) {
         handler.processEvents();
-        usleep (10);
+        usleep (10000);
     }
 
     //ofs.close();

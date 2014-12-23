@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     face.registerPrefix(prefixName, ::onInterest, ::onRegisterFailed);
     while (true) {
         face.processEvents();
-        usleep (10);
+        usleep (10000);
     }
 
     cout << "main(): ServerModule exiting ..." << endl;
