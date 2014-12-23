@@ -41,4 +41,6 @@ void remove_segments(const char* path, const int ver, const int start = 0);
 
 void truncate_segment(const char* path, const int ver, const int seg, const off_t length);
 
+void make_path(char* output, const char* path, const int ver, int pathSize);
+
 #endif

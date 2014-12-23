@@ -40,12 +40,15 @@
 
 #include <sqlite3.h>
 
+#define FULLLEN 100
+
 extern const char *db_name;
 extern sqlite3 *db;
 extern ndn::KeyChain keyChain;
 extern ndn::Name certificateName;
 
 extern std::string global_prefix;
+extern const char* fs_path;
 
 void onInterest(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, ndn::Transport& transport, uint64_t registeredPrefixId);
 

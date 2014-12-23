@@ -26,6 +26,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <fcntl.h>
 
 #include "servermodule.h"
 #include <ndn-cpp/face.hpp>
@@ -33,8 +34,14 @@
 #include <ndn-cpp/security/key-chain.hpp>
 #include <ndn-cpp/common.hpp>
 
+#include <ndn-cpp/sha256-with-rsa-signature.hpp>
+
 using namespace std;
 using namespace ndn;
+
+// should put in a shared config with ndnfs implementation
+const int BLOCKSIZE = 8192;
+const int SEGSIZESHIFT = 13;
 
 void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::shared_ptr<const Interest>& interest, Transport& transport, uint64_t registeredPrefixId) {
 #ifdef NDNFS_DEBUG
@@ -114,24 +121,66 @@ void processInterest(const Name& interest_name, Transport& transport) {
         cout << "processName(): a match has been found for prefix: " << interest_name << endl;
         cout << "processName(): fetching content object from database" << endl;
 #endif       
-        const char * data = (const char *)sqlite3_column_blob(stmt, 3);
+        // instead of reading data from the sqlite database, we find the corresponding 
+        // segment from the file system, and assemble it with signature taken from the 
+        // sqlite database
+        const char * signatureBlob = (const char *)sqlite3_column_blob(stmt, 3);
         int len = sqlite3_column_bytes(stmt, 3);
+        
 #ifdef NDNFS_DEBUG
-        cout << "processName(): blob length=" << len << endl;
-        cout << "processName(): blob data is " << endl;
-        //ofstream ofs("/tmp/blob", ios_base::binary);
+        cout << "processName(): blob signature length=" << len << endl;
+        cout << "processName(): blob signature is " << endl;
+        
         for (int i = 0; i < len; i++) {
-            printf("%02x", (unsigned char)data[i]);
-            //ofs << data[i];
+            printf("%02x", (unsigned char)signatureBlob[i]);
         }
         cout << endl;
 #endif
-        // whenever an interest for a segment's received, the whole data read from db
-        // is sent directly; here instead of resending directly, we'll need to 
-        // reassemble the thing...should I call fuse_read to read starting from a 
-        // specific offset?
+        // For now, the signature type is assumed to be Sha256withRSA
+        Sha256WithRsaSignature signature;
         
-        transport.send((uint8_t*)data, len);
+        signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
+        
+        Data data;
+        data.setName(interest_name);
+        data.setSignature(signature);
+
+        int fd;
+		
+		// Opening here has clue that the path is relative to fs_path
+		char fullPath[FULLLEN] = "";
+		strcpy(fullPath, fs_path);
+		strcat(fullPath, path.c_str());
+		fd = open(fullPath, O_RDONLY);
+	    
+	    if (fd == -1) {
+	      cout << "Open " << fullPath << " failed." << endl;
+	      return;
+	    }
+	    
+	    // For now, the final block is not correctly handled
+		int readLen = BLOCKSIZE;
+		
+		// segment to offset
+		int offset = seg << SEGSIZESHIFT;
+		
+		char output[BLOCKSIZE] = "";
+		
+		int actualLen = pread(fd, output, readLen, offset);
+	    
+		close(fd);
+        
+	    if (actualLen == -1) {
+	      cout << "Read from " << fullPath << " failed." << endl;
+	      return;
+	    }
+	    
+        data.setContent((uint8_t*)output, readLen);
+        
+        cout << "Tried to send data, len " << actualLen << endl;
+        
+        Blob encodedData = data.wireEncode();
+        transport.send(*encodedData);
 #ifdef NDNFS_DEBUG
         cout << "processName(): content object returned and interest consumed" << endl;
 #endif

@@ -36,7 +36,10 @@
 using namespace std;
 using namespace ndn;
 
-const char *db_name = "/tmp/ndnfs.db";
+const char* db_name = "/tmp/ndnfs.db";
+const char* fs_path = "/tmp/ndnfs";
+const char* fs_prefix = "/ndn/broadcast/ndnfs";
+
 sqlite3 *db;
 
 Face face;
@@ -48,17 +51,19 @@ string global_prefix;
 int main(int argc, char **argv) {
     certificateName = keyChain.getDefaultCertificateName();
     face.setCommandSigningInfo(keyChain, certificateName);
-    const char* prefix = "/ndn/broadcast/ndnfs";
-
+    
     int opt;
+    
     while ((opt = getopt(argc, argv, "p:d:")) != -1) {
         switch (opt) {
         case 'p':
-            prefix = optarg;
+            fs_prefix = optarg;
             break;
         case 'd':
             db_name = optarg;
             break;
+        case 'f':
+            fs_path = optarg;
         default:
             break;
         }
@@ -74,10 +79,11 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    cout << "serving prefix: " << prefix << endl;
+    cout << "serving prefix: " << fs_prefix << endl;
     cout << "db file: " << db_name << endl;
+    cout << "fs root path: " << fs_path << endl;
     
-    Name prefixName(prefix);
+    Name prefixName(fs_prefix);
     global_prefix = prefixName.toUri();
 
     face.registerPrefix(prefixName, ::onInterest, ::onRegisterFailed);

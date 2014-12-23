@@ -198,11 +198,10 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     
     cout << "About to write into " << actualPath << endl;
     
-    // error output not included
+    // error output not included; investigating why the file with version appended is not
+    // actually in the fs.
 	fd = open(actualPath, O_WRONLY);
 	res = pwrite(fd, data, len, segment_to_size(seg));
-
-    cout << "After calling pwrite" << endl;
 
 	close(fd);
     delete actualPath;
