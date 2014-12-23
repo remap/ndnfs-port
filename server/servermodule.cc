@@ -128,7 +128,8 @@ void processInterest(const Name& interest_name, Transport& transport) {
         }
         cout << endl;
 #endif
-        // For now, the signature type is assumed to be Sha256withRSA
+        // For now, the signature type is assumed to be Sha256withRSA; should read
+        // signature type from database, which is not yet implemented in the database
         Sha256WithRsaSignature signature;
         
         signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
@@ -152,8 +153,6 @@ void processInterest(const Name& interest_name, Transport& transport) {
 		int totalSegmentNumber = sqlite3_column_int(stmt2,3);
         sqlite3_finalize(stmt2);
         
-        cout << "totalSegment number is " << totalSegmentNumber << endl;
-        
         if (totalSegmentNumber > 0) {
           // in the JS plugin, finalBlockId component is parsed with toSegment
           // not sure if it's supposed to be like this in other ndn applications,
@@ -164,37 +163,27 @@ void processInterest(const Name& interest_name, Transport& transport) {
         
         int fd;
 		// Opening in server module has clue that the path is relative to fs_path
-		char fullPath[FULLLEN] = "";
-		strcpy(fullPath, fs_path);
-		strcat(fullPath, path.c_str());
-		fd = open(fullPath, O_RDONLY);
+		char file_path[FULLLEN] = "";
+		strcpy(file_path, fs_path);
+		strcat(file_path, path.c_str());
+		fd = open(file_path, O_RDONLY);
 	    
 	    if (fd == -1) {
-	      cout << "Open " << fullPath << " failed." << endl;
+	      cout << "Open " << file_path << " failed." << endl;
 	      return;
 	    }
 	    
-	    // For now, the final block is not correctly handled
-		int readLen = BLOCKSIZE;
-		
-		// segment to offset
-		int offset = seg << SEGSIZESHIFT;
-		
 		char output[BLOCKSIZE] = "";
-		
-		cout << "Trying to read file " << fullPath << " from " << offset << " for " << readLen << " bytes." << endl;
-		int actualLen = pread(fd, output, readLen, offset);
+		int actualLen = pread(fd, output, BLOCKSIZE, seg << SEGSIZESHIFT);
 	    
 		close(fd);
         
 	    if (actualLen == -1) {
-	      cout << "Read from " << fullPath << " failed." << endl;
+	      cout << "Read from " << file_path << " failed." << endl;
 	      return;
 	    }
 	    
         data.setContent((uint8_t*)output, actualLen);
-        
-        cout << "Tried to send data, len " << actualLen << endl;
         
         Blob encodedData = data.wireEncode();
         transport.send(*encodedData);
@@ -271,12 +260,7 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     char *wireData = new char[size];
     infof.SerializeToArray(wireData, size);
     Name name(global_prefix);
-    
-    // sendDir is using string concatenation instead
-    Name fileName(path);
-    for (int i = 0; i < fileName.size(); i++) {
-        name.append(fileName.get(i));
-    }
+    name.append(Name(path));
     
     Blob ndnfsFileComponent = Name::fromEscapedString("%C1.FS.file");
     name.append(ndnfsFileComponent).appendVersion(version);
@@ -318,8 +302,8 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         char *wireData = new char[size];
         infoa.SerializeToArray(wireData, size);
         
-        // string concatenation works here; 
-        Name name(global_prefix + path);
+        Name name(global_prefix);
+        name.append(Name(path));
         
         Blob ndnfsDirComponent = Name::fromEscapedString("%C1.FS.dir");
         name.append(ndnfsDirComponent).appendVersion(mtime);

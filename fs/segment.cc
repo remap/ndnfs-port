@@ -47,55 +47,6 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
     cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
 #endif
 
-// Ordinary read does not care about ndn signature
-/*
-    const char *sig_raw;
-    int sig_size;
-    
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 2, ver);
-    sqlite3_bind_int(stmt, 3, seg);
-    if (sqlite3_step(stmt) != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return -1;
-    }
-
-    sig_raw = (const char*) sqlite3_column_blob(stmt, 3);
-    sig_size = sqlite3_column_bytes(stmt, 3);
-
-    
-    Data data;
-    data.wireDecode((const uint8_t*)sig_raw, sig_size);
-    const uint8_t *content = data.getContent().buf();
-    
-    // we should just read from the file, assembling a data packet with the signature
-    // stored in sqlite should be left for the servermodule to do.
-    
-#ifdef NDNFS_DEBUG
-    cout << "read_segment: raw signature is " << endl;
-    for (int i = 0; i < sig_size; i++) {
-        cout << sig_raw[i];
-    }
-    cout << endl;
-    cout << "read_segment: raw signature length is " << sig_size << endl;
-#endif
-
-    size_t copy_len = data.getContent().size();
-    if (copy_len > limit)  // Don't write across the limit
-        copy_len = limit;
-
-#ifdef NDNFS_DEBUG
-    cout << "read_segment: content to copy is " << endl;
-    for (int i = 0; i < copy_len; i++)
-        cout << content[offset + i];
-    cout << endl;
-    cout << "read_segment: copy length is " << copy_len << endl;
-#endif
-    sqlite3_finalize(stmt);
-*/
-
     // ordinary read tries to see if there's such a file in the file system
 	int fd;
 	int res;
@@ -182,8 +133,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
-    cout << "write segment called" << endl;
-
     // we'll need to put this new version of the file into the file system,
     // instead of putting it into the sqlite database
     int fd;
@@ -195,8 +144,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
 	bzero(actualPath, pathSize);
 	
 	make_path(actualPath, path, ver, pathSize);
-    
-    cout << "About to write into " << actualPath << endl;
     
     // error output not included; investigating why the file with version appended is not
     // actually in the fs.

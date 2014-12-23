@@ -21,6 +21,7 @@
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/interest.hpp>
 #include <ndn-cpp/face.hpp>
+#include <ndn-cpp/security/key-chain.hpp>
 
 #include "dir.pb.h"
 #include "file.pb.h"
@@ -36,18 +37,20 @@ using namespace boost::chrono;
 Face handler("localhost");
 
 ndn::Name file_name;
+ndn::KeyChain key_chain;
+ndn::Name certificate_name = key_chain.getDefaultCertificateName();
+
 int total_size = 0;
 int total_seg = 0;
 int current_seg = 0;
 
 bool done = false;
+bool do_verification = true;
 
 typedef high_resolution_clock::time_point stdtime;
 typedef high_resolution_clock::duration stdduration;
 
 stdtime start;
-
-//ofstream ofs("/tmp/file1", ios_base::binary | ios_base::trunc);
 
 void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data);
 void onTimeout (const ptr_lib::shared_ptr<const Interest>& origInterest);
@@ -90,9 +93,26 @@ void onMetaData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
     return;
 }
 
+void onVerified(const ptr_lib::shared_ptr<Data>& data)
+{
+  cout << "Signature verification: VERIFIED" << endl;
+}
+
+void onVerifyFailed(const ptr_lib::shared_ptr<Data>& data)
+{
+  cout << "Signature verification: FAILED" << endl;
+}
+
 void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data) {
     const Name& data_name = data->getName();
     cout << "FinalBlockId : " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
+    
+    if (do_verification) {
+		key_chain.verifyData(data, onVerified, onVerifyFailed);
+	}
+	else {
+		cout << "Verification skipped." << endl;
+	}
     
     current_seg = (int)(data_name.rbegin()->toSegment());
     current_seg++;  // segments are zero-indexed
@@ -102,9 +122,11 @@ void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
         cout << "Last segment received." << endl;
         cout << "Total run time: " << duration_cast<milliseconds>(stop - start).count() << " ms" << endl;
         cout << "Total segment fetched: " << current_seg << endl;
-        cout << "Throughput: " << (double) total_size / (double) duration_cast<milliseconds>(stop - start).count() / 1024 * 8 << " kbps" << endl;
+        cout << "Throughput: " << (double) total_size / (double) duration_cast<milliseconds>(stop - start).count() / 1024 * 8 << " Kb/ms" << endl;
+        
         done = true;
     } else {
+        
         ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
         interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
         interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
@@ -130,7 +152,7 @@ int main (int argc, char **argv) {
     bool repo_mode = false;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "n:r")) != -1) {
+	while ((opt = getopt(argc, argv, "n:r:v")) != -1) {
 		switch (opt) {
         case 'n':
             name = optarg;
@@ -140,7 +162,9 @@ int main (int argc, char **argv) {
             // Fetch file from repo (unversioned but sequenced)
             repo_mode = true;
             break;
-        default: 
+        case 'v':
+            do_verification = true;
+        default:
             usage(); 
             break;
         }

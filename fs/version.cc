@@ -39,39 +39,39 @@ int read_version(const char *path, const int ver, char *output, size_t size, off
 
   int res = sqlite3_step(stmt);
   if (res != SQLITE_ROW) {
-	  sqlite3_finalize(stmt);
-	  return -1;
+	sqlite3_finalize(stmt);
+	return -1;
   }
 
   int file_size = sqlite3_column_int(stmt, 2);
   sqlite3_finalize(stmt);
 
   if (file_size <= (size_t)offset || file_size == 0)
-	  return 0;
+	return 0;
 
   if (offset + size > file_size) /* Trim the read to the file size. */
-	  size = file_size - offset;
+	size = file_size - offset;
 
   int seg_off = seek_segment(offset);
 
   // Read first segment starting from some offset
   int total_read = read_segment(path, ver, seg_off, output, size, (offset - segment_to_size(seg_off)));
   if (total_read == -1) {
-	  return 0;
+	return 0;
   }
   size -= total_read;
   seg_off++;
 
   int seg_read = 0;
   while (size > 0) {
-	  // Read the rest of the segments starting at zero offset
-	  seg_read = read_segment(path, ver, seg_off++, output + total_read, size, 0);
-	  if (seg_read == -1) {
-		  // If anything is wrong when reading segments, just return what we have got already
-		  break;
-	  }
-	  total_read += seg_read;
-	  size -= seg_read;
+	// Read the rest of the segments starting at zero offset
+	seg_read = read_segment(path, ver, seg_off++, output + total_read, size, 0);
+	if (seg_read == -1) {
+	  // If anything is wrong when reading segments, just return what we have got already
+	  break;
+	}
+	total_read += seg_read;
+	size -= seg_read;
   }
 
   return total_read;
@@ -336,15 +336,15 @@ void remove_versions(const char* path)
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step(stmt);
   if(res == SQLITE_ROW){
-	  int curr_ver = sqlite3_column_int(stmt, 0);
-	  if (curr_ver != -1) {
-		  remove_version(path, curr_ver);
-	  }
+	int curr_ver = sqlite3_column_int(stmt, 0);
+	if (curr_ver != -1) {
+	  remove_version(path, curr_ver);
+	}
 
-	  int tmp_ver = sqlite3_column_int(stmt, 1);
-	  if (tmp_ver != -1) {
-		  remove_version(path, tmp_ver);
-	  }
+	int tmp_ver = sqlite3_column_int(stmt, 1);
+	if (tmp_ver != -1) {
+	  remove_version(path, tmp_ver);
+	}
   }
   sqlite3_finalize(stmt);
 }

@@ -48,6 +48,11 @@ Name certificateName;
 
 string global_prefix;
 
+void usage() {
+    fprintf(stderr, "Usage: ./ndnfs-server [-p serving prefix][-d db file][-f file system root]\n");
+    exit(1);
+}
+
 int main(int argc, char **argv) {
     certificateName = keyChain.getDefaultCertificateName();
     face.setCommandSigningInfo(keyChain, certificateName);
@@ -64,7 +69,9 @@ int main(int argc, char **argv) {
             break;
         case 'f':
             fs_path = optarg;
+            break;
         default:
+            usage();
             break;
         }
     }
