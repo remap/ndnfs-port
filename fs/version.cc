@@ -77,44 +77,6 @@ int read_version(const char *path, const int ver, char *output, size_t size, off
   return total_read;
 }
 
-
-////////////////////////////////////////////////////////
-// Caution: the following function does the hack to 
-// add "final block id" to the first segment of file 
-// data. It is so hacky that the author does not even
-// bother to write any comment for it.
-////////////////////////////////////////////////////////
-void update_fbi (const char *path, const int ver, int fbi)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 2, ver);
-  sqlite3_bind_int(stmt, 3, 0);
-  if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  sqlite3_finalize(stmt);
-	  return;
-  }
-  const char * data = (const char *)sqlite3_column_blob(stmt, 3);
-  int len = sqlite3_column_bytes(stmt, 3);
-  Data seg;
-  seg.wireDecode((const uint8_t*)data, len);
-  seg.getMetaInfo().setFinalBlockID(Name().appendSegment(fbi).get(0).getValue());
-  ndnfs::keyChain.sign(seg, ndnfs::certificateName);
-  SignedBlob wire_data = seg.wireEncode();
-  const char* co_raw = (const char*)wire_data.buf();
-  int co_size = wire_data.size();
-  sqlite3_finalize(stmt);
-  sqlite3_prepare_v2(db, "UPDATE file_segments SET data = ? WHERE path = ? AND version = ?  AND segment = ?;", -1, &stmt, 0);
-  sqlite3_bind_text(stmt,2,path,-1,SQLITE_STATIC);
-  sqlite3_bind_int(stmt,3,ver);
-  sqlite3_bind_int(stmt,4,0);
-  sqlite3_bind_blob(stmt,1,co_raw,co_size,SQLITE_STATIC);
-  sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-}
-
-
 int duplicate_version (const char *path, const int from_ver, const int to_ver)
 {
 #ifdef NDNFS_DEBUG
@@ -276,9 +238,6 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 out:
   int total_seg = seg_off > old_total_seg ? seg_off : old_total_seg;
   
-  // final block ID is deprecated, and this function should be reengineered
-  //update_fbi (path, ver, total_seg - 1);
-
   int ver_size = (int) (offset + size);
   // The new total size should be the maximum of old size and (size + offset)
   ver_size = ver_size > old_ver_size ? ver_size : old_ver_size;
@@ -335,9 +294,6 @@ int truncate_version(const char* path, const int ver, off_t length)
 	sqlite3_finalize (stmt);
 	if (res != SQLITE_OK && res != SQLITE_DONE)
 	  return -1;
-
-	if (length > 0)
-	  update_fbi (path, ver, seg_end);
 
 	// Update version size and segment list
 	int tail = length - segment_to_size (seg_end);

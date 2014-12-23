@@ -145,8 +145,24 @@ void processInterest(const Name& interest_name, Transport& transport) {
         data.setName(interest_name);
         data.setSignature(signature);
 
-        int fd;
+        // When assembling the data packet, finalblockid should be put into each segment,
+        // this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
+        sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
+        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_int(stmt, 2, version);
+        if(sqlite3_step(stmt) != SQLITE_ROW){
+            sqlite3_finalize(stmt);
+            return;
+        }
 		
+		int totalSegmentNumber = sqlite3_column_int(stmt,3);
+        
+        if (totalSegmentNumber > 0) {
+		  Name::Component finalBlockId = Name::Component::fromNumber(totalSegmentNumber - 1);
+		  data.getMetaInfo().setFinalBlockId(finalBlockId);
+        }
+        
+        int fd;
 		// Opening here has clue that the path is relative to fs_path
 		char fullPath[FULLLEN] = "";
 		strcpy(fullPath, fs_path);
@@ -175,7 +191,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	      return;
 	    }
 	    
-        data.setContent((uint8_t*)output, readLen);
+        data.setContent((uint8_t*)output, actualLen);
         
         cout << "Tried to send data, len " << actualLen << endl;
         
@@ -266,6 +282,10 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     name.append(ndnfsFileComponent).appendVersion(version);
     Data data0;
     data0.setName(name);
+    
+    Name::Component finalBlockId = Name::Component::fromNumber(totalseg - 1);
+    
+    data0.getMetaInfo().setFinalBlockId(finalBlockId);
     data0.setContent((uint8_t*)wireData, size);
     
     keyChain.sign(data0, certificateName);

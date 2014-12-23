@@ -78,7 +78,7 @@ void onData(const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::
     }
     else {
         cout << "data: " << string((char*)content.buf(), content.size()) << endl;
-        cout << "fbi: " << data->getMetaInfo().getFinalBlockID().toSegment() << endl;
+        cout << "fbi: " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
     }
 
     done = true;
