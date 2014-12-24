@@ -272,7 +272,7 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     data0.getMetaInfo().setFinalBlockId(finalBlockId);
     data0.setContent((uint8_t*)wireData, size);
     
-    keyChain.sign(data0, certificateName);
+    keyChain->sign(data0, certificateName);
     transport.send(*data0.wireEncode());
     
     cout << "Data returned with name: " << name.toUri() << endl;
@@ -311,7 +311,7 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         data0.setName(name);
         data0.setContent((uint8_t*)wireData, size);
         
-        keyChain.sign(data0, certificateName);
+        keyChain->sign(data0, certificateName);
         transport.send(*data0.wireEncode());
         delete wireData;
     }

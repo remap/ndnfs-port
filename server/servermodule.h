@@ -44,7 +44,7 @@
 
 extern const char *db_name;
 extern sqlite3 *db;
-extern ndn::KeyChain keyChain;
+extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
 extern ndn::Name certificateName;
 
 extern std::string global_prefix;

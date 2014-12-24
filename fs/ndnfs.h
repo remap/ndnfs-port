@@ -50,7 +50,7 @@ extern sqlite3 *db;
 
 namespace ndnfs {
     extern ndn::Name certificateName;
-    extern ndn::KeyChain keyChain;
+    extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
     extern std::string global_prefix;
 
     extern const int dir_type;

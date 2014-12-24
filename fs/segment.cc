@@ -106,7 +106,7 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
     
     // instead of putting the whole content object into sqlite, we put only the signature field.
-    ndnfs::keyChain.sign(data0, ndnfs::certificateName);
+    ndnfs::keyChain->sign(data0, ndnfs::certificateName);
     Blob signature = data0.getSignature()->getSignature();
     
     const char* sig_raw = (const char*)signature.buf();
@@ -218,7 +218,7 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
             trunc_data.setName(data.getName());
             trunc_data.setContent(content, length);
             //trunc_data.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
-            ndnfs::keyChain.sign(trunc_data, ndnfs::certificateName);
+            ndnfs::keyChain->sign(trunc_data, ndnfs::certificateName);
             SignedBlob wire_data = trunc_data.wireEncode();
             const uint8_t *trunc_co_raw = wire_data.buf();
             int trunc_co_size = wire_data.size();
