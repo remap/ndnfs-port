@@ -85,6 +85,7 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     // We want the Name(uri) constructor to split the path into components between "/", but we first need
     // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
     // from the raw string and use its toEscapedString.
+    
     string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
     // The "/" was escaped, so unescape.
     while(1) {
