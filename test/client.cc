@@ -15,6 +15,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Author: Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include <ndn-cpp/common.hpp>
@@ -22,92 +23,36 @@
 #include <ndn-cpp/interest.hpp>
 #include <ndn-cpp/face.hpp>
 
-#include "dir.pb.h"
-#include "file.pb.h"
+#include "console-handling.h"
+#include "handler.h"
 
 #include <iostream>
 #include <getopt.h>
 #include <unistd.h>
+#include <string.h>
 
 using namespace std;
 using namespace ndn;
-//using namespace boost;
 
-Face handler("localhost");
+#define FETCH_COMMAND "fetch "
+#define SHOW_COMMAND "show "
+#define HELP_COMMAND "help "
 
-void onData(const ptr_lib::shared_ptr<const Interest>&, const ptr_lib::shared_ptr<Data>&);
-void onTimeout(const ptr_lib::shared_ptr<const Interest>&);
+Face face("localhost");
 
 bool done = false;
 
-void onData(const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data) {
-    const Blob& content = data->getContent();
-    const Name& data_name = data->getName();
-    const Name::Component& comp = data_name.get(data_name.size() - 2);
-    string marker = comp.toEscapedString();
-    if(marker == "%C1.FS.dir"){
-        ndnfs::DirInfoArray infoa;
-        if(infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()){
-            cout << "This is a directory:" << endl;
-            int n = infoa.di_size();
-            for(int i = 0; i<n; i++){
-                const ndnfs::DirInfo &info = infoa.di(i);
-                cout << info.path();
-                if(info.type() == 0)
-                    cout <<":    DIR"<<endl;
-                else
-                    cout <<":    FILE"<<endl;
-            }
-        }
-        else{
-            cerr << "protobuf error" << endl;
-        }
-    }
-    else if(marker == "%C1.FS.file"){
-        ndnfs::FileInfo infof;
-        if(infof.ParseFromArray(content.buf(),content.size()) && infof.IsInitialized()){
-            cout << "This is a file" << endl;
-            cout << "name:  " << data->getName().toUri() << endl;
-            cout << "size:  " << infof.size() << endl;
-            cout << "version:   " << infof.version() << endl;
-            cout << "total segments: " << infof.totalseg() << endl;
-        }
-        else{
-            cerr << "protobuf error" << endl;
-        }
-    }
-    else {
-        cout << "data: " << string((char*)content.buf(), content.size()) << endl;
-        cout << "fbi: " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
-    }
-
-    done = true;
-}
-
-void onTimeout(const ptr_lib::shared_ptr<const Interest>& origInterest) {
-    cout << "TIMEOUT!" << endl;
-    //handler->expressInterest(*origInterest, onData, onTimeout);
-    done = true;
-}
-
 void usage() {
-    fprintf(stderr, "Usage: ./client [-n name]\n");
+    fprintf(stderr, "Client is a command line browser for ndnfs. \nUsage: ./client\n");
     exit(1);
 }
 
 int main (int argc, char **argv) {
-    ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-    interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
-    
-    const char* name = NULL;
-
     int opt;
-    while ((opt = getopt(argc, argv, "n:")) != -1) {
+    while ((opt = getopt(argc, argv, "h:")) != -1) {
         switch (opt) {
-        case 'n': 
-            name = optarg;
-            cout << "main(): set name: " << name << endl;
-            interestPtr->setName(ndn::Name(name));
+        case 'h': 
+            usage();
             break;
         default: 
             usage();
@@ -115,13 +60,36 @@ int main (int argc, char **argv) {
         }
     }
 
-    handler.expressInterest(*interestPtr, onData, onTimeout);
-    cout << "Interest sent" << endl;
+	while (true) {
+        if (isStdinReady()) {
+            string input = stdinReadLine();
+            if (strstr(input.c_str(), SHOW_COMMAND)) {
+                string nameStr = input.substr(strlen(SHOW_COMMAND));
+                cout << "Displaying info of file by name: " << nameStr << endl;
+                
+                Handler handler;
+                Name name(nameStr);
+                Interest interest(name);
+                face.expressInterest
+                  (interest, ptr_lib::bind(&Handler::onData, &handler, _1, _2), 
+                   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
+            }
+            else if (strstr(input.c_str(), FETCH_COMMAND)) {
+                string nameStr = input.substr(strlen(FETCH_COMMAND));
+                
+            }
+            else if (strstr(input.c_str(), HELP_COMMAND)) {
+            
+            }
+            else {
+                cout << input << ": Command unknown." << endl;
+            }
+        }
 
-    while (!done) {
-        handler.processEvents();
-        usleep (10000);
+		face.processEvents();
+		// We need to sleep for a few milliseconds so we don't use 100% of the CPU.
+		usleep(10000);
     }
-
+    
     return 0;
 }

@@ -84,7 +84,7 @@ def build (bld):
     bld (
         target = "test-client",
         features = ["cxx", "cxxprogram"],
-        source = 'test/client.cc server/dir.proto server/file.proto',
+        source = 'test/client.cc test/handler.cc server/dir.proto server/file.proto',
         use = 'NDNCPP',
         includes = 'server'
         )
