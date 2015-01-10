@@ -2,6 +2,9 @@
 #define CONSOLE_HANDLING_H
 
 #include <poll.h>
+#include <sstream>
+#include <vector>
+#include <string>
 
 #define INPUT_BUFFER_SIZE 1000
 
@@ -81,6 +84,23 @@ isStdinReady()
 	pollInfo.events = POLLIN;
 
 	return poll(&pollInfo, 1, 0) > 0;
+}
+
+std::vector<std::string> 
+&split(const std::string &s, char delim, std::vector<std::string> &elems) {
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+std::vector<std::string> 
+split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, elems);
+    return elems;
 }
 
 #endif
