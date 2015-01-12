@@ -9,10 +9,11 @@
 // comparison would be comparing two pointers.
 struct str_cmp
 {
-   bool operator()(const char *a, const char *b) const
-   {
-      return std::strcmp(a, b) < 0;
-   }
+  bool operator()(const char *a, const char *b) const
+  {
+    // comparison function expects a true on less than, and false if otherwise
+    return std::strcmp(a, b) < 0;
+  }
 };
 
 extern std::map<const char *, const char *, str_cmp> ext_mime_map;

@@ -77,7 +77,7 @@ def build (bld):
     bld (
         target = "ndnfs-server",
         features = ["cxx", "cxxprogram"],
-        source = bld.path.ant_glob (['server/server.cc', 'server/servermodule.cc', 'server/dir.proto', 'server/file.proto']),
+        source = bld.path.ant_glob (['server/*.cc', 'server/*.proto']),
         use = 'NDNCPP SQLITE3',
         includes = 'server'
         )

@@ -59,44 +59,102 @@ void onRegisterFailed(const ptr_lib::shared_ptr<const Name>& prefix) {
     cout << "Register failed" << endl;
 }
 
-void parseName(const ndn::Name& name, int &version, int &seg, string &path) {
+int parseName(const ndn::Name& name, int &version, int &seg, string &path) {
+    int ret = -1;
     version = -1;
     seg = -1;
-    ostringstream oss;
+    
+    // this should be changed to using toVersion, not using the the octets directly in case
+    // of future changes in naming conventions...
     ndn::Name::const_iterator iter = name.begin();
+    ostringstream oss;
+    
     for (; iter != name.end(); iter++) {
         const uint8_t marker = *(iter->getValue().buf());
         
         if (marker == 0xFD) {
-            version = iter->toVersion(); 
+            // Right now, having two versions does not make sense.
+            if (version == -1) {
+                version = iter->toVersion();
+            }
+            else {
+                return -1;
+            }
         }
         else if (marker == 0x00) {
-            seg = iter->toSegment();
+            // Having segment number before version number does not make sense
+            if (version == -1) {
+                return -1;
+            }
+            // Having two segment numbers does not make sense
+            else if (seg != -1) {
+                return -1;
+            }
+            else {
+                seg = iter->toSegment();
+            }
         }
         else if (marker == 0xC1) {
             continue;
         }
         else {
-            string comp = iter->toEscapedString();
-            oss << "/" << comp;
+            string component = iter->toEscapedString();
+            
+            // Deciding if this interest is asking for meta_info
+            // If the component comes after <version> but not <segment>, it is interpreted 
+            // as either a meta request, or an invalid interest.
+            if (version != -1 && seg == -1) {
+                if (component == NdnfsNamespace::metaComponentName_) {
+                    ret = 4;
+                }
+                else {
+                    return -1;
+                }
+            }
+            // If the component comes before <version> and <segment>, it is interpreted as
+            // part of the path.
+            else if (version == -1 && seg == -1) {
+                oss << "/" << component;
+            }
+            // If the component comes after <version>/<segment>, it is considered invalid
+            else {
+                return -1;
+            }
         }
     }
+    
+    // we scanned through a valid interest name
     path = oss.str();
 
     path = path.substr(global_prefix.length());
     if (path == "")
         path = string("/");
+       
+    // has <version>/<segment> 
+    if (version != -1 && seg != -1) {
+        ret = 3;
+    }
+    // has <version>, but not _meta
+    else if (version != -1 && ret != 4) {
+        ret = 2;
+    }
+    // has nothing
+    else if (version == -1) {
+        ret = 1;
+    }
+    return ret;
 }
 
 void processInterest(const Name& interest_name, Transport& transport) {
     string path;
     int version;
     int seg;
-    parseName(interest_name, version, seg, path);
+    int ret = parseName(interest_name, version, seg, path);
 #ifdef NDNFS_DEBUG
-    cout << "processName(): version=" << version << ", segment=" << seg << ", path=" << path << endl;
+    cout << "processName(): version=" << version << ", segment=" << seg << ", path=" << path << ", ret value=" << ret << endl;
 #endif
-    if(version != -1 && seg != -1){
+    // The client is asking for a segment of a file.
+    if (ret == 3) {
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
@@ -163,7 +221,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
         
         int fd;
 		// Opening in server module has clue that the path is relative to fs_path
-		char file_path[FULLLEN] = "";
+		char file_path[FULL_LEN] = "";
 		strcpy(file_path, fs_path);
 		strcat(file_path, path.c_str());
 		fd = open(file_path, O_RDONLY);
@@ -191,7 +249,8 @@ void processInterest(const Name& interest_name, Transport& transport) {
         cout << "processName(): content object returned and interest consumed" << endl;
 #endif
     }
-    else if (version != -1 && seg == -1) {
+    // The client is asking for a certain version of a file
+    else if (ret == 2) {
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
@@ -207,11 +266,12 @@ void processInterest(const Name& interest_name, Transport& transport) {
         sendFile(path, version, sqlite3_column_int(stmt,2), sqlite3_column_int(stmt,3), transport);
         sqlite3_finalize(stmt);
     }
-    else if (version == -1 && seg == -1) {
+    // The client is asking for 'generic' info about a file/folder in ndnfs
+    else if (ret == 1) {
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?", -1, &stmt, 0);
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-        if(sqlite3_step(stmt) != SQLITE_ROW){
+        if (sqlite3_step(stmt) != SQLITE_ROW) {
 #ifdef NDNFS_DEBUG
             cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
 #endif
@@ -220,7 +280,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
         }
         
         int type = sqlite3_column_int(stmt,2);
-        if (type == 1){
+        if (type == 1) {
 #ifdef NDNFS_DEBUG
             cout << "processName(): found file: " << path << endl;
 #endif
@@ -248,6 +308,60 @@ void processInterest(const Name& interest_name, Transport& transport) {
             sendDir(path, mtime, transport);
         }
     }
+    // The client is asking for the meta_info of a file
+    else if (ret == 4) {
+        sqlite3_stmt *stmt;
+        sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?", -1, &stmt, 0);
+        sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+        if(sqlite3_step(stmt) != SQLITE_ROW) {
+#ifdef NDNFS_DEBUG
+            cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
+#endif
+            sqlite3_finalize(stmt);
+            return;
+        }
+        
+		// right now, if the requested path is a file, whenever meta_info is asked, the server replies with 
+		// name: <received name>/<mime_type>, content: mime_type	
+		// if the requested path is a folder, the server does not reply with anything	
+        string mimeType = string((char *)sqlite3_column_text(stmt, 9));
+        cout << mimeType << endl;
+        
+        int type = sqlite3_column_int(stmt,2);
+        if (type == 1) {
+#ifdef NDNFS_DEBUG
+            cout << "processName(): found file: " << path << endl;
+#endif
+            version = sqlite3_column_int(stmt, 7);
+            sqlite3_finalize(stmt);
+            sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
+            sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_int(stmt, 2, version);
+            
+            if (sqlite3_step(stmt) != SQLITE_ROW) {
+#ifdef NDNFS_DEBUG
+                cout << "processName(): no such file version found in ndnfs: " << path << endl;
+#endif
+                sqlite3_finalize(stmt);
+                return;
+            }
+            
+            Name metaName(interest_name);
+            metaName.append(NdnfsNamespace::mimeComponentName_);
+            
+            Data data(metaName);
+            data.setContent((const uint8_t *)&mimeType[0], mimeType.size());
+            keyChain->sign(data, certificateName);
+            transport.send(*data.wireEncode());
+            
+            sqlite3_finalize(stmt);
+        } else {
+#ifdef NDNFS_DEBUG
+            cout << "processName(): found dir: " << path << endl;
+            cout << "processName(): meta_info of a dir is not defined yet." << endl;
+#endif
+        }       
+    }
 }
 
 void sendFile(const string& path, int version, int sizef, int totalseg, Transport& transport) {
@@ -262,7 +376,7 @@ void sendFile(const string& path, int version, int sizef, int totalseg, Transpor
     Name name(global_prefix);
     name.append(Name(path));
     
-    Blob ndnfsFileComponent = Name::fromEscapedString("%C1.FS.file");
+    Blob ndnfsFileComponent = Name::fromEscapedString(NdnfsNamespace::fileComponentName_);
     name.append(ndnfsFileComponent).appendVersion(version);
     Data data0;
     data0.setName(name);
@@ -305,7 +419,7 @@ void sendDir(const string& path, int mtime, Transport& transport) {
         Name name(global_prefix);
         name.append(Name(path));
         
-        Blob ndnfsDirComponent = Name::fromEscapedString("%C1.FS.dir");
+        Blob ndnfsDirComponent = Name::fromEscapedString(NdnfsNamespace::dirComponentName_);
         name.append(ndnfsDirComponent).appendVersion(mtime);
         Data data0;
         data0.setName(name);
