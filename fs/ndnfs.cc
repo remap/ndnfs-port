@@ -248,6 +248,7 @@ CREATE TABLE IF NOT EXISTS                        \n\
     size                 INTEGER,                 \n\
     current_version      INTEGER,                 \n\
     temp_version         INTEGER,                 \n\
+    mime_type            TEXT,                    \n\
     PRIMARY KEY (path)                            \n\
   );                                              \n\
 CREATE INDEX id_path ON file_system (path);       \n\
@@ -286,6 +287,9 @@ CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
     sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
 
     cout << "main: ok" << endl;
+
+    cout << "main: initializing file mime_type inference..." << endl;
+    initialize_ext_mime_map();
 
     cout << "main: mount root folder..." << endl;
 

@@ -96,69 +96,77 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 int ndnfs_create (const char *path, mode_t mode, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
-    cout << "ndnfs_create: path=" << path << ", flag=0x" << std::hex << fi->flags << ", mode=0" << std::oct << mode << endl;
+  cout << "ndnfs_create: path=" << path << ", flag=0x" << std::hex << fi->flags << ", mode=0" << std::oct << mode << endl;
 #endif
 
-    string dir_path, file_name;
-    split_last_component(path, dir_path, file_name);
-    
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    int res = sqlite3_step(stmt);
-    if (res == SQLITE_ROW) {
-        // Cannot create file that has conflicting file name
-        sqlite3_finalize(stmt);
-        return -ENOENT;
-    }
-    
-    sqlite3_finalize(stmt);
+  string dir_path, file_name;
+  split_last_component(path, dir_path, file_name);
+  
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  int res = sqlite3_step(stmt);
+  if (res == SQLITE_ROW) {
+	  // Cannot create file that has conflicting file name
+	  sqlite3_finalize(stmt);
+	  return -ENOENT;
+  }
+  
+  sqlite3_finalize(stmt);
 
-    //XXX: We don't check this for now.
-    // // Cannot create file without creating necessary folders in advance
-    // cursor = c->conn().query(db_name, QUERY("_id" << dir_path));
-    // if (!cursor->more()) {
-    //     c->done();
-    //     delete c;
-    //     return -ENOENT;
-    // }
-    
-    // Generate temparary version for the new file
-    int tmp_ver = time(0);
-    
-    // Create temp version for the new file
-    sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?, ?, ?, ?);", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 2, tmp_ver);
-    sqlite3_bind_int(stmt, 3, 0);
-    sqlite3_bind_int(stmt, 4, 0);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+  //XXX: We don't check this for now.
+  // // Cannot create file without creating necessary folders in advance
+  // cursor = c->conn().query(db_name, QUERY("_id" << dir_path));
+  // if (!cursor->more()) {
+  //     c->done();
+  //     delete c;
+  //     return -ENOENT;
+  // }
+  
+  // Infer the mime_type of the file based on extension
+  char mime_type[100] = "";
+  mime_infer(mime_type, path);
+  
+  // Generate temparary version for the new file
+  int tmp_ver = time(0);
+  
+  // Create temp version for the new file
+  sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?, ?, ?, ?);", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, tmp_ver);
+  sqlite3_bind_int(stmt, 3, 0);
+  sqlite3_bind_int(stmt, 4, 0);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
 
-    // Add the file entry to database
-    sqlite3_prepare_v2(db, 
-                       "INSERT INTO file_system (path, parent, type, mode, atime, mtime, size, current_version, temp_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", 
-                       -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 3, ndnfs::file_type);
-    sqlite3_bind_int(stmt, 4, mode);
-    sqlite3_bind_int(stmt, 5, tmp_ver);
-    sqlite3_bind_int(stmt, 6, tmp_ver);
-    sqlite3_bind_int(stmt, 7, 0);  // size
-    sqlite3_bind_int(stmt, 8, -1);  // current version
-    sqlite3_bind_int(stmt, 9, tmp_ver);  // temp version
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+  // Add the file entry to database
+  sqlite3_prepare_v2(db, 
+					 "INSERT INTO file_system \
+					  (path, parent, type, mode, atime, mtime, size, current_version, temp_version, mime_type) \
+					  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", 
+					 -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 3, ndnfs::file_type);
+  sqlite3_bind_int(stmt, 4, mode);
+  sqlite3_bind_int(stmt, 5, tmp_ver);
+  sqlite3_bind_int(stmt, 6, tmp_ver);
+  sqlite3_bind_int(stmt, 7, 0);  // size
+  sqlite3_bind_int(stmt, 8, -1);  // current version
+  sqlite3_bind_int(stmt, 9, tmp_ver);  // temp version
+  sqlite3_bind_text(stmt, 10, mime_type, -1, SQLITE_STATIC); // mime_type based on ext
+  
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
 
-    // Update mtime for parent folder
-    sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_int(stmt, 1, tmp_ver);
-    sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-    
-    return 0;
+  // Update mtime for parent folder
+  sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_int(stmt, 1, tmp_ver);
+  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+  
+  return 0;
 }
 
 
@@ -208,11 +216,10 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
-  if (res != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return -ENOENT;
-    }
+  if (res != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -ENOENT;
+  }
   
   int type = sqlite3_column_int (stmt, 0);
   int curr_ver = sqlite3_column_int (stmt, 1);
