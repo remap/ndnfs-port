@@ -33,14 +33,12 @@ inline int segment_to_size(int seg)
     return (seg << ndnfs::seg_size_shift);
 }
 
-int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset);
+int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset, struct fuse_file_info *fi);
 
-int write_segment(const char* path, const int ver, const int seg, const char *data, const int len);
+int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi);
 
 void remove_segments(const char* path, const int ver, const int start = 0);
 
 void truncate_segment(const char* path, const int ver, const int seg, const off_t length);
-
-void make_path(char* output, const char* path, const int ver, int pathSize);
 
 #endif

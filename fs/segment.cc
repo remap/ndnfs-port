@@ -31,48 +31,17 @@
 using namespace std;
 using namespace ndn;
 
-void make_path(char* output, const char* path, const int ver, int pathSize)
-{
-	strcpy(output, path);
-    strcat(output, ".");
-    
-    char versionStr[INT2STRLEN] = "";
-	sprintf(versionStr, "%d", ver);
-    strcat(output, versionStr);
-}
-
-int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset)
+int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
     cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
 #endif
-
-    // ordinary read tries to see if there's such a file in the file system
-	int fd;
-	int res;
     
-    int pathSize = strlen(path) + INT2STRLEN;
-    char * actualPath = (char*)malloc(pathSize);
-	bzero(actualPath, pathSize);
-	
-	make_path(actualPath, path, ver, pathSize);
-    
-	fd = open(actualPath, O_RDONLY);
-	
-	int readLen = ndnfs::seg_size;
-	if (readLen > limit) {
-	  readLen = limit;
-	}
-	
-	res = pread(fd, output, readLen, offset);
-	close(fd);
-	delete actualPath;
-    
-    return readLen;
+    return 1;
 }
 
 
-int write_segment(const char* path, const int ver, const int seg, const char *data, const int len)
+int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
     cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
@@ -134,32 +103,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
-    /*
-    // we'll need to put this new version of the file into the file system,
-    // instead of putting it into the sqlite database
-    
-    // Interestingly, this does not do anything.
-    
-    int fd;
-	int res;
-	// pathSize should be large enough to contain [path].[ver.toString]
-	// versionStr length should be replaced
-	int pathSize = strlen(path) + INT2STRLEN;
-	char * actualPath = (char*)malloc(pathSize);
-	bzero(actualPath, pathSize);
-	
-	make_path(actualPath, path, ver, pathSize);
-    
-    // error output not included; investigating why the file with version appended is not
-    // actually in the fs.
-	
-	fd = open(actualPath, O_WRONLY);
-	
-	res = pwrite(fd, data, len, segment_to_size(seg));
-    
-	close(fd);
-    delete actualPath;
-    */
     return 0;
 }
 

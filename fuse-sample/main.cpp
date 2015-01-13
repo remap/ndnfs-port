@@ -266,6 +266,8 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	int res;
 
 	(void) fi;
+	printf("XMP write path is %s\n", path);
+	
 	fd = open(path, O_WRONLY);
 	if (fd == -1)
 		return -errno;

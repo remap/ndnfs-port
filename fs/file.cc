@@ -51,8 +51,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   // TODO: check file access mode against uid and gid
 
   // Check open flags
-  switch (fi->flags & O_ACCMODE)
-    {
+  switch (fi->flags & O_ACCMODE) {
     case O_RDONLY:
       // Nothing to be done for read only access
       // Should we also update version in this case (since the atime has changed)?
@@ -89,7 +88,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
       break;
     default:
       break;
-    }
+  }
   
   return 0;
 }
@@ -199,7 +198,7 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
 
     sqlite3_finalize(stmt);
 
-    int size_read = read_version(path, curr_ver, buf, size, offset);
+    int size_read = read_version(path, curr_ver, buf, size, offset, fi);
 
     sqlite3_prepare_v2(db, "UPDATE file_system SET atime = ? WHERE path = ?;", -1, &stmt, 0);
     sqlite3_bind_int(stmt, 1, (int)time(0));
@@ -235,7 +234,7 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
     return -EINVAL;
 
   // Write data to a new version of the file
-  int ver_size = write_version (path, temp_ver, buf, size, offset);
+  int ver_size = write_version (path, temp_ver, buf, size, offset, fi);
   
   if (ver_size < 0)
     return -EINVAL;
