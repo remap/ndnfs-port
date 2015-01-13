@@ -58,10 +58,10 @@ Use '-p' flag to configure prefix, '-d' flag to select db file, and '-f' flag to
 To access NDNFS data remotely, please use [NDN-JS Firefox plugin](https://github.com/named-data/ndn-js), or a built-in client in tests (documentation coming soon)
 
 Please make sure the nfd that you are connected to has a route to NDNFS-server. An easy setup using the Firefox plugin would be
-1. Run nfd locally with websocket enabled;
-2. Set the plugin's hub to localhost;
-3. nfdc to the host of ndnfs-server (can be localhost as well, in which case nfdc won't be needed);
-4. Type in a "<root>/<file or folder>" path as URI and fetch.
+* Run nfd locally with websocket enabled;
+* Set the plugin's hub to localhost;
+* nfdc to the host of ndnfs-server (can be localhost as well, in which case nfdc won't be needed);
+* Type in a "<root>/<file or folder>" path as URI and fetch.
 
 Right now, the published mime_type is not utilized by the Firefox plugin, and all data will be displayed as plain text on the webpage. (which may take a long time for a large file)
 
