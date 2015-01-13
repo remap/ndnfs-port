@@ -31,79 +31,97 @@
 using namespace std;
 using namespace ndn;
 
+/**
+ * version parameter is not used right now, as duplicate_version is now a stub, 
+ * and older versions of the file are not actually stored or accessible.
+ */
 int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
-    cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
+  cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
 #endif
-    
-    return 1;
+  char *temp = new char[ndnfs::seg_size];
+  int copy_len = pread(fi->fh, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
+  
+  if (copy_len > limit)  // Don't write across the limit
+	copy_len = limit;
+  
+  memcpy(output, temp, copy_len);
+  delete temp;
+  
+  return copy_len;
 }
 
-
+/**
+ * version parameter is not used right now, as duplicate_version is now a stub, 
+ * and write does not create/write to a new file by the name of the version.
+ */
 int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
-    cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
+  cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
 #endif
 
-    assert(len > 0);
+  assert(len > 0);
 
-    string file_path(path);
-    string full_name = ndnfs::global_prefix + file_path;
-    // We want the Name(uri) constructor to split the path into components between "/", but we first need
-    // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
-    // from the raw string and use its toEscapedString.
-    
-    string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
-    // The "/" was escaped, so unescape.
-    while(1) {
-      size_t found = escapedString.find("%2F");
-      if (found == string::npos) break;
-      escapedString.replace(found, 3, "/");
-    }
-    Name seg_name(escapedString);
-    
-    seg_name.appendVersion(ver);
-    seg_name.appendSegment(seg);
+  string file_path(path);
+  string full_name = ndnfs::global_prefix + file_path;
+  // We want the Name(uri) constructor to split the path into components between "/", but we first need
+  // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
+  // from the raw string and use its toEscapedString.
+  
+  string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
+  // The "/" was escaped, so unescape.
+  while(1) {
+	size_t found = escapedString.find("%2F");
+	if (found == string::npos) break;
+	escapedString.replace(found, 3, "/");
+  }
+  Name seg_name(escapedString);
+  
+  seg_name.appendVersion(ver);
+  seg_name.appendSegment(seg);
 #ifdef NDNFS_DEBUG
-    cout << "write_segment: segment name is " << seg_name.toUri() << endl;
+  cout << "write_segment: segment name is " << seg_name.toUri() << endl;
 #endif
 
-    Data data0;
-    data0.setName(seg_name);
-    data0.setContent((const uint8_t*)data, len);
-    //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
-    
-    // instead of putting the whole content object into sqlite, we put only the signature field.
-    ndnfs::keyChain->sign(data0, ndnfs::certificateName);
-    Blob signature = data0.getSignature()->getSignature();
-    
-    const char* sig_raw = (const char*)signature.buf();
-    int sig_size = strlen(sig_raw);
+  Data data0;
+  data0.setName(seg_name);
+  data0.setContent((const uint8_t*)data, len);
+  //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
+  
+  // instead of putting the whole content object into sqlite, we put only the signature field.
+  ndnfs::keyChain->sign(data0, ndnfs::certificateName);
+  Blob signature = data0.getSignature()->getSignature();
+  
+  const char* sig_raw = (const char*)signature.buf();
+  int sig_size = strlen(sig_raw);
 
 #ifdef NDNFS_DEBUG
-    cout << "write_segment: raw signature is" << endl;
-    for (int i = 0; i < sig_size; i++) {
-	  printf("%02x", (unsigned char)sig_raw[i]);
-    }
-    cout << endl;
-    cout << "write_segment: raw signature length is " << sig_size << endl;
+  cout << "write_segment: raw signature is" << endl;
+  for (int i = 0; i < sig_size; i++) {
+	printf("%02x", (unsigned char)sig_raw[i]);
+  }
+  cout << endl;
+  cout << "write_segment: raw signature length is " << sig_size << endl;
 #endif
 
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
-    sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
-    sqlite3_bind_int(stmt,2,ver);
-    sqlite3_bind_int(stmt,3,seg);
-    
-    sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-    
-    sqlite3_bind_int(stmt,5,segment_to_size(seg));
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    return 0;
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
+  sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
+  sqlite3_bind_int(stmt,2,ver);
+  sqlite3_bind_int(stmt,3,seg);
+  
+  sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
+  
+  sqlite3_bind_int(stmt,5,segment_to_size(seg));
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+  
+  // the actual writing of the file content.
+  pwrite(fi->fh, data, len, segment_to_size(seg));
+  
+  return 0;
 }
 
 void remove_segments(const char* path, const int ver, const int start/* = 0 */)
