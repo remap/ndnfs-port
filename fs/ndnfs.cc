@@ -237,7 +237,7 @@ int main(int argc, char **argv)
     // Since actual data is not stored in database,
     // for each re-run, does it make sense to recreate the table no matter if it already exists.
     const char* INIT_FS_TABLE = "\
-CREATE TABLE IF NOT EXISTS                        \n\
+CREATE TABLE                                      \n\
   file_system(                                    \n\
     path                 TEXT NOT NULL,           \n\
     parent               TEXT NOT NULL,           \n\
@@ -259,7 +259,7 @@ CREATE INDEX id_parent ON file_system (parent);   \n\
     sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
 
     const char* INIT_VER_TABLE = "\
-CREATE TABLE IF NOT EXISTS                                   \n\
+CREATE TABLE                                                 \n\
   file_versions(                                             \n\
     path          TEXT NOT NULL,                             \n\
     version       INTEGER,                                   \n\
@@ -273,7 +273,7 @@ CREATE INDEX id_ver ON file_versions (path, version);        \n\
     sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
 
     const char* INIT_SEG_TABLE = "\
-CREATE TABLE IF NOT EXISTS                                        \n\
+CREATE TABLE                                                      \n\
   file_segments(                                                  \n\
     path        TEXT NOT NULL,                                    \n\
     version     INTEGER,                                          \n\
