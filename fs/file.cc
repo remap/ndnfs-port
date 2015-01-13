@@ -20,6 +20,8 @@
 
 #include "file.h"
 
+#include "signature-states.h"
+
 using namespace std;
 
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
@@ -155,6 +157,9 @@ int ndnfs_create (const char *path, mode_t mode, struct fuse_file_info *fi)
   sqlite3_bind_int(stmt, 8, -1);  // current version
   sqlite3_bind_int(stmt, 9, tmp_ver);  // temp version
   sqlite3_bind_text(stmt, 10, mime_type, -1, SQLITE_STATIC); // mime_type based on ext
+  
+  enum SignatureState signatureState = NOT_READY;
+  sqlite3_bind_int(stmt, 11, signatureState);
   
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);

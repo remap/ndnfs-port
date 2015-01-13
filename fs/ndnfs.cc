@@ -249,6 +249,7 @@ CREATE TABLE IF NOT EXISTS                        \n\
     current_version      INTEGER,                 \n\
     temp_version         INTEGER,                 \n\
     mime_type            TEXT,                    \n\
+    ready_signed         INTEGER,                 \n\
     PRIMARY KEY (path)                            \n\
   );                                              \n\
 CREATE INDEX id_path ON file_system (path);       \n\
