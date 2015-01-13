@@ -43,6 +43,11 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   char *temp = new char[ndnfs::seg_size];
   int copy_len = pread(fi->fh, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
   
+  if (copy_len < 0) {
+    cerr << "read_segment: read error." << endl;
+    return -1;
+  }
+  
   if (copy_len > limit)  // Don't write across the limit
 	copy_len = limit;
   
@@ -119,9 +124,13 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   sqlite3_finalize(stmt);
   
   // the actual writing of the file content.
-  pwrite(fi->fh, data, len, segment_to_size(seg));
+  int ret = pwrite(fi->fh, data, len, segment_to_size(seg));
+  if (ret < 0) {
+    cerr << "write_segment: write error." << endl;
+    return -1;
+  }
   
-  return 0;
+  return ret;
 }
 
 void remove_segments(const char* path, const int ver, const int start/* = 0 */)

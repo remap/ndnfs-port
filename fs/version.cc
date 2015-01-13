@@ -51,21 +51,22 @@ int read_version(const char *path, const int ver, char *output, size_t size, off
 
   if (offset + size > file_size) /* Trim the read to the file size. */
 	size = file_size - offset;
-
-  int seg_off = seek_segment(offset);
+  
+  // find the segment index before the offset position
+  int seg = seek_segment(offset);
 
   // Read first segment starting from some offset
-  int total_read = read_segment(path, ver, seg_off, output, size, (offset - segment_to_size(seg_off)), fi);
+  int total_read = read_segment(path, ver, seg, output, size, (offset - segment_to_size(seg)), fi);
   if (total_read == -1) {
 	return 0;
   }
   size -= total_read;
-  seg_off++;
+  seg++;
 
   int seg_read = 0;
   while (size > 0) {
 	// Read the rest of the segments starting at zero offset
-	seg_read = read_segment(path, ver, seg_off++, output + total_read, size, 0, fi);
+	seg_read = read_segment(path, ver, seg++, output + total_read, size, 0, fi);
 	if (seg_read == -1) {
 	  // If anything is wrong when reading segments, just return what we have got already
 	  break;
@@ -138,8 +139,8 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
   int old_total_seg = sqlite3_column_int (stmt, 3);
   const char *buf_pos = buf;
   size_t size_left = size;
-  int seg_off = seek_segment (offset);
-  int tail = offset - segment_to_size (seg_off);
+  int seg = seek_segment (offset);
+  int tail = offset - segment_to_size (seg);
   
   if (tail > 0) {
     // Special handling for the boundary segment: resign this entire segment
@@ -157,22 +158,11 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	  return -1;
 	}
 	
-	// TODO: this 'path' needs to be fixed
-	int fd = open(path, O_RDWR);
-	
-	if (fd == -1) {
-	  cout << "write_version: Write with boundary segment, open " << path << " failed." << endl;
-	  sqlite3_finalize (stmt);
-	  return -1;
-	}
-	
 	char *old_data = new char[ndnfs::seg_size];
-	int read_len = pread(fd, old_data, ndnfs::seg_size, segment_to_size(seg_off));
-	
-	close(fd);
+	int read_len = pread(fi->fh, old_data, ndnfs::seg_size, segment_to_size(seg));
 	
 	if (read_len == -1) {
-	  cout << "write_version: Write with boundary segment, read from " << path << " failed." << endl;
+	  cerr << "write_version: Write with boundary segment, read from " << path << " failed." << endl;
 	  sqlite3_finalize (stmt);
 	  return -1;
 	}
@@ -183,7 +173,7 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	// The final size of this segment content is the maximum of the old size and the new size
 	int updated_seg_len = tail + copy_len;
 	updated_seg_len = read_len > updated_seg_len ? read_len : updated_seg_len;
-	write_segment (path, ver, seg_off++, new_data, updated_seg_len, fi);
+	write_segment (path, ver, seg++, new_data, updated_seg_len, fi);
 	
 	delete new_data;
 	delete old_data;
@@ -202,13 +192,13 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	if (copy_len > size_left)
 	  copy_len = size_left;
 
-	write_segment (path, ver, seg_off++, buf_pos, copy_len, fi);
+	write_segment (path, ver, seg++, buf_pos, copy_len, fi);
 	buf_pos += copy_len;
 	size_left -= copy_len;
   }
   
 out:
-  int total_seg = seg_off > old_total_seg ? seg_off : old_total_seg;
+  int total_seg = seg > old_total_seg ? seg : old_total_seg;
   
   int ver_size = (int) (offset + size);
   // The new total size should be the maximum of old size and (size + offset)
