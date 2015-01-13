@@ -40,4 +40,6 @@ int ndnfs_unlink(const char *path);
 
 int ndnfs_release(const char *path, struct fuse_file_info *fi);
 
+void abs_path(char dest[PATH_MAX], const char *path);
+
 #endif

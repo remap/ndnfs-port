@@ -44,8 +44,8 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   int read_len = pread(fi->fh, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
   
   if (read_len < 0) {
-    cerr << "read_segment: read error." << endl;
-    return -1;
+    cerr << "read_segment: read error. Errno: " << errno << endl;
+    return -errno;
   }
   
   if (read_len > limit)  // Don't write across the limit
@@ -126,8 +126,8 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   // the actual writing of the file content.
   int write_len = pwrite(fi->fh, data, len, segment_to_size(seg));
   if (write_len < 0) {
-    cerr << "write_segment: write error." << endl;
-    return -1;
+    cerr << "write_segment: write error. Errno: " << errno << endl;
+    return -errno;
   }
   
   return write_len;

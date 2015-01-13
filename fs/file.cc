@@ -24,6 +24,12 @@
 
 using namespace std;
 
+void abs_path(char dest[PATH_MAX], const char *path) 
+{
+  strcpy(dest, ndnfs::root_path.c_str());
+  strncat(dest, path, PATH_MAX);
+}
+
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
@@ -34,11 +40,10 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
-  if (res != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return -ENOENT;
-    }
+  if (res != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -ENOENT;
+  }
     
   int type = sqlite3_column_int (stmt, 0);
   int curr_ver = sqlite3_column_int (stmt, 1);
@@ -48,13 +53,17 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   if (type != ndnfs::file_type)
     return -EISDIR;
 
-  // TODO: check file access mode against uid and gid
-
   // Check open flags
   switch (fi->flags & O_ACCMODE) {
     case O_RDONLY:
-      // Nothing to be done for read only access
       // Should we also update version in this case (since the atime has changed)?
+      
+      // Changes here bring us a dependency upon mount point's absolute directory;
+      // which does not exist in Wentao's earlier version.
+	  char fullPath[PATH_MAX];
+	  abs_path(fullPath, path);
+	  fi->fh = open(fullPath, fi->flags);
+      
       break;
     case O_WRONLY:
     case O_RDWR:

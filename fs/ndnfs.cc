@@ -138,6 +138,7 @@ sqlite3 *db;
 ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::keyChain;
 ndn::Name ndnfs::certificateName;
 string ndnfs::global_prefix;
+string ndnfs::root_path;
 
 const int ndnfs::dir_type = 0;
 const int ndnfs::file_type = 1;
@@ -191,7 +192,6 @@ int main(int argc, char **argv)
           (identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
             (new ndn::NoVerifyPolicyManager())));
     
-    // Initialize the storage.
     ndn::Name keyName("/testname/DSK-123");
     ndnfs::certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
            (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
@@ -204,7 +204,25 @@ int main(int argc, char **argv)
     ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
     
     cout << "main: NDNFS version 0.3" << endl;
+    
+    // Extract the root path (mount point) from running parameters;
+    // it is not advised for fuse-mod to know mount point, as mount point may not be
+    // static, and it may be cloned. Wonder what the common practice is for this.
+    
+    // First parameter not starting with '-' is the root path; 
+	int i = 0;
+	for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
+	if(i == argc) {
+	  cerr << "main: missing mount point." << endl;
+	  return -1;
+	}
+
+	ndnfs::root_path = string(argv[i]);
+	if (ndnfs::root_path.back() == '/') {
+	  ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
+	}
+	
     // uid and gid will be set to that of the user who starts the fuse process
     ndnfs::user_id = getuid();
     ndnfs::group_id = getgid();
@@ -223,7 +241,7 @@ int main(int argc, char **argv)
     cout << "main: test sqlite connection..." << endl;
 
     if (sqlite3_open(db_name, &db) == SQLITE_OK) {
-        cout << "main: ok" << endl;
+        cout << "main: sqlite db open ok" << endl;
     } else {
         cout << "main: cannot connect to sqlite db, quit" << endl;
         sqlite3_close(db);
@@ -237,7 +255,7 @@ int main(int argc, char **argv)
     // Since actual data is not stored in database,
     // for each re-run, does it make sense to recreate the table no matter if it already exists.
     const char* INIT_FS_TABLE = "\
-CREATE TABLE                                      \n\
+CREATE TABLE IF NOT EXISTS                        \n\
   file_system(                                    \n\
     path                 TEXT NOT NULL,           \n\
     parent               TEXT NOT NULL,           \n\
@@ -259,7 +277,7 @@ CREATE INDEX id_parent ON file_system (parent);   \n\
     sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
 
     const char* INIT_VER_TABLE = "\
-CREATE TABLE                                                 \n\
+CREATE TABLE IF NOT EXISTS                                   \n\
   file_versions(                                             \n\
     path          TEXT NOT NULL,                             \n\
     version       INTEGER,                                   \n\
@@ -273,7 +291,7 @@ CREATE INDEX id_ver ON file_versions (path, version);        \n\
     sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
 
     const char* INIT_SEG_TABLE = "\
-CREATE TABLE                                                      \n\
+CREATE TABLE IF NOT EXISTS                                        \n\
   file_segments(                                                  \n\
     path        TEXT NOT NULL,                                    \n\
     version     INTEGER,                                          \n\

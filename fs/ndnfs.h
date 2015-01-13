@@ -52,6 +52,7 @@ namespace ndnfs {
     extern ndn::Name certificateName;
     extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
     extern std::string global_prefix;
+    extern std::string root_path;
 
     extern const int dir_type;
     extern const int file_type;

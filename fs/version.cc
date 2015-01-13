@@ -159,6 +159,10 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	}
 	
 	char *old_data = new char[ndnfs::seg_size];
+	
+	cout << "Segment to size as offset " << segment_to_size(seg) << endl;
+	cout << O_WRONLY << " " << O_RDONLY << " " << O_RDWR << endl;
+	
 	int read_len = pread(fi->fh, old_data, ndnfs::seg_size, segment_to_size(seg));
 	
 	if (read_len == -1) {
