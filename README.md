@@ -61,7 +61,7 @@ Please make sure the nfd that you are connected to has a route to NDNFS-server. 
 * Run nfd locally with websocket enabled;
 * Set the plugin's hub to localhost;
 * nfdc to the host of ndnfs-server (can be localhost as well, in which case nfdc won't be needed);
-* Type in a "<root>/<file or folder>" path as URI and fetch.
+* Type in a "\<root\>/\<file or folder\>" path as URI and fetch.
 
 Right now, the published mime_type is not utilized by the Firefox plugin, and all data will be displayed as plain text on the webpage. (which may take a long time for a large file)
 
