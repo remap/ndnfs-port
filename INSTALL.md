@@ -37,7 +37,7 @@ Install NDN-CPP as follows (boost is optional for ndn-cpp, but right now we only
 * Mac OS X 10.8.4, Mac OS X 10.9.5
 Change directory to the NDNFS root.  Enter:
 <pre>
-    $ PKG_CONFIG_PATH=/usr/local/lib/pkgconfig 
+    $ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig 
     $ ./waf configure
     $ ./waf
 </pre>
