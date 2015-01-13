@@ -179,7 +179,6 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	delete old_data;
 	  
 	if (final) {
-	  // Then we are done
 	  goto out;
 	}	
 	// Else, move pointer forward
