@@ -1,7 +1,10 @@
 # NDNFS
 
 Zhehao's port of NDN file system based on [work](https://github.com/wentaoshang/NDNFS) by Wentao and Qiuhan.
+
 See the file [INSTALL.md](https://github.com/zhehaowang/ndnfs-port/blob/master/INSTALL.md) for build and install instructions.
+
+Report bug to Zhehao. wangzhehao410305@gmail.com
 
 ### Usage
 
