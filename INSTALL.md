@@ -5,7 +5,7 @@
 * OSXFUSE 2.5.6
 * Sqlite
 * [NDN-CPP library](github.com/named-data/ndn-cpp)
-* boost library
+* boost library (optional)
 * protobuf-cpp
 * pkgconfig
 
@@ -23,7 +23,7 @@ Install MacPorts from http://www.macports.org/install.php, and install prerequis
     $ sudo port install protobuf-cpp
     $ sudo port install pkgconfig
 </pre>
-Install NDN-CPP as follows (after boost is installed):
+Install NDN-CPP as follows (boost is optional for ndn-cpp, but right now we only tested with ndn-cpp compiled with boost shared-ptrs and functions):
 <pre>
     $ git clone https://github.com/named-data/ndn-cpp.git
     $ cd ndn-cpp
