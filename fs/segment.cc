@@ -134,8 +134,12 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
+    /*
     // we'll need to put this new version of the file into the file system,
     // instead of putting it into the sqlite database
+    
+    // Interestingly, this does not do anything.
+    
     int fd;
 	int res;
 	// pathSize should be large enough to contain [path].[ver.toString]
@@ -148,12 +152,14 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     
     // error output not included; investigating why the file with version appended is not
     // actually in the fs.
+	
 	fd = open(actualPath, O_WRONLY);
+	
 	res = pwrite(fd, data, len, segment_to_size(seg));
-
+    
 	close(fd);
     delete actualPath;
-    
+    */
     return 0;
 }
 

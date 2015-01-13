@@ -130,7 +130,6 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
   sqlite3_bind_int (stmt, 2, ver);
   
   if (sqlite3_step (stmt) != SQLITE_ROW) {
-	// Should not happen
 	sqlite3_finalize (stmt);
 	return -1;
   }
@@ -143,7 +142,7 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
   int tail = offset - segment_to_size (seg_off);
   
   if (tail > 0) {
-	// Special handling for the boundary segment
+    // Special handling for the boundary segment
 	// Keep what is remaining in that segment before 'offset' and override the data after 'offset'
 	sqlite3_finalize (stmt);
 	sqlite3_prepare_v2 (db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
@@ -163,7 +162,7 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 	seg.wireDecode ((const uint8_t*) seg_raw, seg_len);
 	const Blob& seg_content = seg.getContent ();
 	int seg_content_len = seg_content.size ();
-	assert (tail <= seg_content_len);
+	
 	const uint8_t *old_data = seg_content.buf ();
 
 	int copy_len = ndnfs::seg_size - tail;  // This is what we can copy at most in this segment

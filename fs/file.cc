@@ -236,6 +236,7 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
 
   // Write data to a new version of the file
   int ver_size = write_version (path, temp_ver, buf, size, offset);
+  
   if (ver_size < 0)
     return -EINVAL;
 
