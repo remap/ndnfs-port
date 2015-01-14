@@ -26,10 +26,20 @@ using namespace std;
 
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_open: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
-#endif
-
+  // The actual open operation
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int ret = 0;
+  ret = open(fullPath, fi->flags);
+  
+  if (ret == -1) {
+	cerr << "ndnfs_open: open failed. Full path: " << fullPath << ". Errno: " << -errno << endl;
+	return -errno;
+  }
+  close(ret);
+  
+  // Ndnfs versioning operation
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
@@ -47,22 +57,9 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   if (type != ndnfs::file_type)
     return -EISDIR;
   
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
-  
-  // Check open flags
   switch (fi->flags & O_ACCMODE) {
     case O_RDONLY:
       // Should we also update version in this case (since the atime has changed)?
-      
-      // Changes here bring us a dependency upon mount point's absolute directory;
-      // which does not exist in Wentao's earlier version.
-	  fi->fh = open(fullPath, O_RDONLY);
-      if (fi->fh == -1) {
-        cerr << "ndnfs_open: open failed" << endl;
-        return -errno;
-      }
-      
       break;
     case O_WRONLY:
     case O_RDWR:
@@ -76,7 +73,12 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 
       // Create a new version number for temp_ver based on system time
       temp_ver = time(0);
-
+      
+      // The possibility of (temp_ver == curr_ver) exists, especially in open call directly after mknod 
+      if (temp_ver <= curr_ver) {
+        temp_ver = curr_ver + 1;
+      }
+      
       // Copy old data from current version to the temp version
       // An version entry for temp_ver will be inserted in this function
       if (duplicate_version (path, curr_ver, temp_ver) < 0)
@@ -93,23 +95,19 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
       if (res != SQLITE_OK && res != SQLITE_DONE)
         return -EACCES;
       
-      // Changes here bring us a dependency upon mount point's absolute directory;
-      // which does not exist in Wentao's earlier version.
-      fi->fh = open(fullPath, O_RDWR);
-      if (fi->fh == -1) {
-        cerr << "ndnfs_open: open failed. Errno " << errno << endl;
-        return -errno;
-      }
-      
       break;
     default:
       break;
   }
-  cout << "going" << endl;
+  
   return 0;
 }
 
-
+/**
+ * Create function is replaced with mknod, which means instead of writing to the 
+ * tmp_version field in the database (because create include open with RDWR), we
+ * write to the current_version field.
+ */
 int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 {
 #ifdef NDNFS_DEBUG
@@ -133,24 +131,18 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 
   //XXX: We don't check this for now.
   // // Cannot create file without creating necessary folders in advance
-  // cursor = c->conn().query(db_name, QUERY("_id" << dir_path));
-  // if (!cursor->more()) {
-  //     c->done();
-  //     delete c;
-  //     return -ENOENT;
-  // }
   
   // Infer the mime_type of the file based on extension
   char mime_type[100] = "";
   mime_infer(mime_type, path);
   
-  // Generate temparary version for the new file
-  int tmp_ver = time(0);
+  // Generate first version for the new file
+  int ver = time(0);
   
-  // Create temp version for the new file
+  // Create first version for the new file
   sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?, ?, ?, ?);", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 2, tmp_ver);
+  sqlite3_bind_int(stmt, 2, ver);
   sqlite3_bind_int(stmt, 3, 0);
   sqlite3_bind_int(stmt, 4, 0);
   sqlite3_step(stmt);
@@ -166,11 +158,11 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 3, ndnfs::file_type);
   sqlite3_bind_int(stmt, 4, mode);
-  sqlite3_bind_int(stmt, 5, tmp_ver);
-  sqlite3_bind_int(stmt, 6, tmp_ver);
+  sqlite3_bind_int(stmt, 5, ver);
+  sqlite3_bind_int(stmt, 6, ver);
   sqlite3_bind_int(stmt, 7, 0);  // size
-  sqlite3_bind_int(stmt, 8, -1);  // current version
-  sqlite3_bind_int(stmt, 9, tmp_ver);  // temp version
+  sqlite3_bind_int(stmt, 8, ver);  // current version
+  sqlite3_bind_int(stmt, 9, -1);  // temp version
   sqlite3_bind_text(stmt, 10, mime_type, -1, SQLITE_STATIC); // mime_type based on ext
   
   enum SignatureState signatureState = NOT_READY;
@@ -181,7 +173,7 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 
   // Update mtime for parent folder
   sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int(stmt, 1, tmp_ver);
+  sqlite3_bind_int(stmt, 1, ver);
   sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -190,10 +182,22 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   
-  int ret = mknod(fullPath, mode, dev);
+  int ret = 0;
   
+  // For OS other than Linux, calling open directly does not seem to be enough;
+  if (S_ISREG(mode)) {
+    ret = open(fullPath, O_CREAT | O_EXCL | O_WRONLY, mode);
+    if (ret >= 0) {
+      ret = close(ret);
+    }
+  } else if (S_ISFIFO(mode)) {
+	ret = mkfifo(fullPath, mode);
+  } else {
+	ret = mknod(fullPath, mode, dev);
+  }
+    
   if (ret == -1) {
-    cerr << "ndnfs_mknod: mknod failed. Errno " << errno << endl;
+    cerr << "ndnfs_mknod: mknod failed. Full path: " << fullPath << ". Errno " << errno << endl;
     return -errno;
   }
   

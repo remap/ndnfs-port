@@ -78,13 +78,13 @@ int read_version(const char *path, const int ver, char *output, size_t size, off
   return total_read;
 }
 
-// in current implementation, why is it necessary to 'duplicate' version?
+// duplicate_version right now is a stub
 int duplicate_version (const char *path, const int from_ver, const int to_ver)
 {
 #ifdef NDNFS_DEBUG
-  cout << "duplicate_version: path=" << path << std::dec << ", from=" << from_ver << ", to=" << to_ver << endl;
+  cout << "duplicate_version need to be reimplemented." << endl;
 #endif
-
+  
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT size, totalSegments FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
@@ -93,9 +93,10 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
 	sqlite3_finalize (stmt);
 	return -1;
   }
+  
   int ver_size = sqlite3_column_int (stmt, 0);
   int total_seg = sqlite3_column_int (stmt, 1);
-
+  
   // Insert "to" version entry
   sqlite3_finalize (stmt);
   sqlite3_prepare_v2 (db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?,?,?,?);", -1, &stmt, 0);
@@ -107,7 +108,7 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
   sqlite3_finalize (stmt);
   if (res != SQLITE_OK && res != SQLITE_DONE)
     return -1;
-
+  
   return 0;
 }
 
@@ -117,12 +118,6 @@ int write_version (const char* path, const int ver, const char *buf, size_t size
 {
 #ifdef NDNFS_DEBUG
   cout << "write_version: path=" << path << std::dec << ", ver=" << ver << ", size=" << size << ", offset=" << offset << endl;
-  //cout << "write_version: content to write is " << endl;
-  //for (int i = 0; i < size; i++)
-  // {
-  //   cout << buf[i];
-  // }
-  //cout << endl;
 #endif
   
   sqlite3_stmt *stmt;

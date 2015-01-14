@@ -16,10 +16,24 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
  
 // Since the file gets stored as Data(Blob) into sqlite, whose name would not be changeable,
 // so the fs should not use a different prefix, or all files before that prefix would become unsolicited data.
+
+// TODO:
+// 1. Figure out the /private path, and the meaning of two paths; mount point vs actual, their relationships
+// 2. Solve the access_mode problem in current implementation: 
+//      Right now need to give write access for everyone to the actual dir.
+// 3. Double check the functions are using correct paths, and finish implementing truncate and remove functions
+// 4. Remove unnecessary fields from the database
+// 5. Summarize their original approach, and the problems that I get stuck upon earlier (persistent files; open not called; stuck upon getattr for mount point, etc)
+// 6. Asynchronous signing
+// My fuse examples:
+// http://www.gtoal.com/fusestuff/fuse-2.7.0/example/fusexmp.c.html
+// http://fuse.sourceforge.net/doxygen/fusexmp_8c.html
+// https://code.google.com/p/fuse-examplefs/source/browse/examplefs.cc
 
 #include "ndnfs.h"
 #include "directory.h"
@@ -189,7 +203,6 @@ void abs_path(char *dest, const char *path)
 
 int main(int argc, char **argv)
 {
-    assert((1 << ndnfs::seg_size_shift) == ndnfs::seg_size);
     umask(0);
     
     // Initialize the keychain

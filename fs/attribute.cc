@@ -34,7 +34,7 @@ int ndnfs_getattr(const char *path, struct stat *stbuf)
     int ret = lstat(fullPath, stbuf);
     
 	if (ret == -1) {
-	  cerr << "ndnfs_getattr: get_attr failed. Errno " << errno << endl;
+	  cerr << "ndnfs_getattr: get_attr failed. Full path " << fullPath << ". Errno " << errno << endl;
 	  return -errno;
 	}
 	return ret;

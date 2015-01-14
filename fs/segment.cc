@@ -42,9 +42,6 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
 #endif
   char *temp = new char[ndnfs::seg_size];
   
-  // TODO: Dependency on absolute path of mount point is unfavorable, while
-  // calling pread with fi->fh does seem intuitive, but it does not work, checking out why;
-/*
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   
@@ -53,9 +50,9 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   if (fd == -1) {
     cerr << "write_segment: open error. Errno: " << errno << endl;
     return -errno;
-  }*/
+  }
   
-  int read_len = pread(fi->fh, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
+  int read_len = pread(fd, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
   
   if (read_len < 0) {
     cerr << "read_segment: read error. Errno: " << errno << endl;
@@ -68,7 +65,7 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   memcpy(output, temp, read_len);
   
   delete temp;
-  //close(fd);
+  close(fd);
   
   return read_len;
 }
@@ -137,9 +134,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   
-  // TODO: Dependency on absolute path of mount point is unfavorable, while
-  // calling pread with fi->fh does seem intuitive, but it does not work, checking out why;
-/*
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   int fd = open(fullPath, O_RDWR);
@@ -147,14 +141,14 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
     cerr << "write_segment: open error. Errno: " << errno << endl;
     return -errno;
   }
-*/  
-  int write_len = pwrite(fi->fh, data, len, segment_to_size(seg));
+
+  int write_len = pwrite(fd, data, len, segment_to_size(seg));
   if (write_len < 0) {
     cerr << "write_segment: write error. Errno: " << errno << endl;
     return -errno;
   }
   
-  //close(fd);
+  close(fd);
   return write_len;
 }
 
