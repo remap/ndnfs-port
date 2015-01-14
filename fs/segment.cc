@@ -104,7 +104,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   Data data0;
   data0.setName(seg_name);
   data0.setContent((const uint8_t*)data, len);
-  //data0.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
   
   // instead of putting the whole content object into sqlite, we put only the signature field.
   ndnfs::keyChain->sign(data0, ndnfs::certificateName);
@@ -180,53 +179,85 @@ void remove_segments(const char* path, const int ver, const int start/* = 0 */)
     }
 }
 
+// truncate is not tested in current implementation
 void truncate_segment(const char* path, const int ver, const int seg, const off_t length)
 {
 #ifdef NDNFS_DEBUG
-    cout << "truncate_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", length=" << length << endl;
+  cout << "truncate_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", length=" << length << endl;
 #endif
 
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 2, ver);
-    sqlite3_bind_int(stmt, 3, seg);
-    if(sqlite3_step(stmt) == SQLITE_ROW) {
-        if (length == 0) {
-            sqlite3_finalize(stmt);
-            sqlite3_prepare_v2(db, "DELETE FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-            sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-            sqlite3_bind_int(stmt, 2, ver);
-            sqlite3_bind_int(stmt, 3, seg);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        } else {
-            const char* co_raw = (const char *)sqlite3_column_blob(stmt, 3);
-            int co_size = sqlite3_column_bytes(stmt, 3);
-
-            assert(co_size > (int)length);
-            
-            Data data;
-            data.wireDecode((const uint8_t*)co_raw, co_size);
-            const uint8_t *content = data.getContent().buf();
-
-            Data trunc_data;
-            trunc_data.setName(data.getName());
-            trunc_data.setContent(content, length);
-            //trunc_data.getMetaInfo().setTimestampMilliseconds(time(NULL) * 1000.0);
-            ndnfs::keyChain->sign(trunc_data, ndnfs::certificateName);
-            SignedBlob wire_data = trunc_data.wireEncode();
-            const uint8_t *trunc_co_raw = wire_data.buf();
-            int trunc_co_size = wire_data.size();
-
-            sqlite3_finalize(stmt);
-            sqlite3_prepare_v2(db, "UPDATE file_segments SET data = ? WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-            sqlite3_bind_blob(stmt, 1, trunc_co_raw, trunc_co_size, SQLITE_STATIC);
-            sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
-            sqlite3_bind_int(stmt, 3, ver);
-            sqlite3_bind_int(stmt, 4, seg);
-            sqlite3_step(stmt);
-            sqlite3_finalize(stmt);
-        }
-    }
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, ver);
+  sqlite3_bind_int(stmt, 3, seg);
+  
+  if(sqlite3_step(stmt) == SQLITE_ROW) {
+	if (length == 0) {
+	  sqlite3_finalize(stmt);
+	  sqlite3_prepare_v2(db, "DELETE FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
+	  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+	  sqlite3_bind_int(stmt, 2, ver);
+	  sqlite3_bind_int(stmt, 3, seg);
+	  sqlite3_step(stmt);
+	  sqlite3_finalize(stmt);
+	} else {
+	  // the file is already truncated, so we only update the signature here.
+	  char fullPath[PATH_MAX];
+	  abs_path(fullPath, path);
+	  int fd = open(fullPath, O_RDONLY);
+	  if (fd == -1) {
+		cerr << "write_segment: open error. Errno: " << errno << endl;
+		return;
+	  }
+      
+      char *data = new char[ndnfs::seg_size];
+	  int read_len = pread(fd, data, length, segment_to_size(seg));
+	  if (read_len < 0) {
+		cerr << "write_segment: write error. Errno: " << errno << endl;
+		return;
+	  }
+  
+	  string file_path(path);
+	  string full_name = ndnfs::global_prefix + file_path;
+	  // We want the Name(uri) constructor to split the path into components between "/", but we first need
+	  // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
+	  // from the raw string and use its toEscapedString.
+  
+	  string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
+	  // The "/" was escaped, so unescape.
+	  while(1) {
+		size_t found = escapedString.find("%2F");
+		if (found == string::npos) break;
+		escapedString.replace(found, 3, "/");
+	  }
+	  Name seg_name(escapedString);
+  
+	  seg_name.appendVersion(ver);
+	  seg_name.appendSegment(seg);
+      
+      Data trunc_data;
+	  trunc_data.setContent((const uint8_t*)data, length);
+  
+	  ndnfs::keyChain->sign(trunc_data, ndnfs::certificateName);
+	  Blob signature = trunc_data.getSignature()->getSignature();
+  
+	  const char* sig_raw = (const char*)signature.buf();
+	  int sig_size = strlen(sig_raw);
+	  
+	  sqlite3_finalize(stmt);	
+	  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
+	  sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
+	  sqlite3_bind_int(stmt,2,ver);
+	  sqlite3_bind_int(stmt,3,seg);
+	  sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
+  
+	  sqlite3_bind_int(stmt,5,segment_to_size(seg));
+	  sqlite3_step(stmt);
+	  sqlite3_finalize(stmt);
+  
+	  delete data;
+	  close(fd);
+	}
+  }
 }

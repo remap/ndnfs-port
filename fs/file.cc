@@ -286,10 +286,17 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
 
 int ndnfs_truncate (const char *path, off_t length)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_truncate: path=" << path << ", truncate to length " << std::dec << length << endl;
-#endif
-
+  // actual file truncation
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int trunc_ret = truncate(fullPath, length);
+  if (trunc_ret == -1) {
+    cerr << "ndnfs_truncate: error. Full path " << fullPath << ". Errno " << errno << endl;
+    return -errno;
+  }
+  
+  // sqlite operations for file truncation
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);

@@ -257,6 +257,7 @@ int truncate_version(const char* path, const int ver, off_t length)
 
 	// Update version size and segment list
 	int tail = length - segment_to_size (seg_end);
+	
 	truncate_segment (path, ver, seg_end, tail);
 	remove_segments (path, ver, seg_end + 1);
 	
