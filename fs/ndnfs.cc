@@ -157,13 +157,15 @@ static void create_fuse_operations(struct fuse_operations *fuse_op)
     fuse_op->open     = ndnfs_open;
     fuse_op->read     = ndnfs_read;
     fuse_op->readdir  = ndnfs_readdir;
-    fuse_op->create   = ndnfs_create;
+    fuse_op->mknod    = ndnfs_mknod;
     fuse_op->write    = ndnfs_write;
     fuse_op->truncate = ndnfs_truncate;
     fuse_op->release  = ndnfs_release;
     fuse_op->unlink   = ndnfs_unlink;
     fuse_op->mkdir    = ndnfs_mkdir;
     fuse_op->rmdir    = ndnfs_rmdir;
+    fuse_op->statfs   = ndnfs_statfs;
+    fuse_op->access   = ndnfs_access;
 }
 
 static struct fuse_operations ndnfs_fs_ops;
@@ -179,10 +181,17 @@ static struct fuse_opt ndnfs_opts[] = {
     FUSE_OPT_END
 };
 
+void abs_path(char *dest, const char *path)
+{
+  strcpy(dest, ndnfs::root_path.c_str());
+  strcat(dest, path);
+}
+
 int main(int argc, char **argv)
 {
     assert((1 << ndnfs::seg_size_shift) == ndnfs::seg_size);
-
+    umask(0);
+    
     // Initialize the keychain
     ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
     ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
@@ -218,10 +227,17 @@ int main(int argc, char **argv)
 	  return -1;
 	}
 
-	ndnfs::root_path = string(argv[i]);
+	ndnfs::root_path = string(realpath(argv[i], NULL));
+	
+    for(; i < argc; i++) {
+	  argv[i] = argv[i + 1];
+	}
+	argc--;
+	
 	if (ndnfs::root_path.back() == '/') {
 	  ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
 	}
+	cout << "main: root path is " << ndnfs::root_path << endl;
 	
     // uid and gid will be set to that of the user who starts the fuse process
     ndnfs::user_id = getuid();

@@ -8,6 +8,8 @@ Report bug to Zhehao. wangzhehao410305@gmail.com
 
 ### Usage
 
+**This usage's not for the current version, update in progress**
+
 NDNFS is an NDN-friendly file system. When mounted, data in the file system can be fetched through NDN through NDNFS-server.
 
 To run on Mac:

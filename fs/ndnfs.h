@@ -29,6 +29,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <dirent.h>
 
 #include <time.h>
 #include <sys/time.h>
@@ -78,5 +79,7 @@ inline int split_last_component(const std::string &path, std::string &prefix, st
     
     return 0;
 }
+
+void abs_path(char *dest, const char *path);
 
 #endif

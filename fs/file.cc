@@ -24,12 +24,6 @@
 
 using namespace std;
 
-void abs_path(char dest[PATH_MAX], const char *path) 
-{
-  strcpy(dest, ndnfs::root_path.c_str());
-  strncat(dest, path, PATH_MAX);
-}
-
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
@@ -52,7 +46,10 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 
   if (type != ndnfs::file_type)
     return -EISDIR;
-
+  
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
   // Check open flags
   switch (fi->flags & O_ACCMODE) {
     case O_RDONLY:
@@ -60,9 +57,11 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
       
       // Changes here bring us a dependency upon mount point's absolute directory;
       // which does not exist in Wentao's earlier version.
-	  char fullPath[PATH_MAX];
-	  abs_path(fullPath, path);
-	  fi->fh = open(fullPath, fi->flags);
+	  fi->fh = open(fullPath, O_RDONLY);
+      if (fi->fh == -1) {
+        cerr << "ndnfs_open: open failed" << endl;
+        return -errno;
+      }
       
       break;
     case O_WRONLY:
@@ -93,20 +92,28 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 
       if (res != SQLITE_OK && res != SQLITE_DONE)
         return -EACCES;
-
+      
+      // Changes here bring us a dependency upon mount point's absolute directory;
+      // which does not exist in Wentao's earlier version.
+      fi->fh = open(fullPath, O_RDWR);
+      if (fi->fh == -1) {
+        cerr << "ndnfs_open: open failed. Errno " << errno << endl;
+        return -errno;
+      }
+      
       break;
     default:
       break;
   }
-  
+  cout << "going" << endl;
   return 0;
 }
 
 
-int ndnfs_create (const char *path, mode_t mode, struct fuse_file_info *fi)
+int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 {
 #ifdef NDNFS_DEBUG
-  cout << "ndnfs_create: path=" << path << ", flag=0x" << std::hex << fi->flags << ", mode=0" << std::oct << mode << endl;
+  cout << "ndnfs_mknod: path=" << path << ", mode=0" << std::oct << mode << endl;
 #endif
 
   string dir_path, file_name;
@@ -178,6 +185,17 @@ int ndnfs_create (const char *path, mode_t mode, struct fuse_file_info *fi)
   sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
+  
+  // Create the actual file
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int ret = mknod(fullPath, mode, dev);
+  
+  if (ret == -1) {
+    cerr << "ndnfs_mknod: mknod failed. Errno " << errno << endl;
+    return -errno;
+  }
   
   return 0;
 }
@@ -272,11 +290,10 @@ int ndnfs_truncate (const char *path, off_t length)
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
-  if (res != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return -ENOENT;
-    }
+  if (res != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -ENOENT;
+  }
     
   int type = sqlite3_column_int (stmt, 0);
   int curr_ver = sqlite3_column_int (stmt, 1);
@@ -286,6 +303,7 @@ int ndnfs_truncate (const char *path, off_t length)
   if (type != ndnfs::file_type)
     return -EINVAL;
 
+  // TODO: fix truncate_version
   int ret = truncate_version (path, temp_ver, length);
 
   sqlite3_prepare_v2 (db, "UPDATE file_system SET size = ?, mtime = ? WHERE path = ?;", -1, &stmt, 0);
@@ -302,30 +320,40 @@ int ndnfs_truncate (const char *path, off_t length)
 int ndnfs_unlink(const char *path)
 {
 #ifdef NDNFS_DEBUG
-    cout << "ndnfs_unlink: path=" << path << endl;
+  cout << "ndnfs_unlink: path=" << path << endl;
 #endif
 
-    string dir_path, file_name;
-    split_last_component(path, dir_path, file_name);
+  string dir_path, file_name;
+  split_last_component(path, dir_path, file_name);
 
-    // First, remove all the versions under the file entry (both current and temp)
-    remove_versions(path);    
+  // First, remove all the versions under the file entry (both current and temp)
+  // TODO: fix remove_versions
+  remove_versions(path);    
 
-    // Then, remove file entry
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE type=1 AND path = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
+  // Then, remove file entry
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE type=1 AND path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+  
+  // Finally, update parent directory mtime
+  sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_int(stmt, 1, (int)time(0));
+  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+  
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  int ret = unlink(fullPath);
+  
+  if (ret == -1) {
+    cerr << "ndnfs_unlink: unlink failed. Errno: " << errno << endl;
+    return -errno;
+  }
     
-    // Finally, update parent directory mtime
-    sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_int(stmt, 1, (int)time(0));
-    sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    return 0;
+  return 0;
 }
 
 int ndnfs_release (const char *path, struct fuse_file_info *fi)
@@ -338,20 +366,18 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
   sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
-  if (res != SQLITE_ROW)
-    {
-      sqlite3_finalize (stmt);
-      return -ENOENT;
-    }
+  if (res != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -ENOENT;
+  }
 
   int type = sqlite3_column_int (stmt, 0);
   int curr_ver = sqlite3_column_int (stmt, 1);
   int temp_ver = sqlite3_column_int (stmt, 2);
-  if (type != ndnfs::file_type)
-    {
-      sqlite3_finalize (stmt);
-      return -EINVAL;
-    }
+  if (type != ndnfs::file_type) {
+	sqlite3_finalize (stmt);
+	return -EINVAL;
+  }
 
   sqlite3_finalize (stmt);
 
@@ -363,27 +389,21 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
   */
 
   // Check open flags
-  if (((fi->flags & O_ACCMODE) != O_RDONLY) || curr_ver == -1)
-    {
-      if (temp_ver == -1)
-	{
-	  // Should not happen
-	  return -EINVAL;
-	}
+  if (((fi->flags & O_ACCMODE) != O_RDONLY) || curr_ver == -1) {
+    if (temp_ver == -1) {
+      return -EINVAL;
+    }
 	
-      sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
-      sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-      sqlite3_bind_int (stmt, 2, temp_ver);
-      int res = sqlite3_step (stmt);
+	sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
+	sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
+	sqlite3_bind_int (stmt, 2, temp_ver);
+	int res = sqlite3_step (stmt);
 
-      if (res != SQLITE_ROW)
-	{
+	if (res != SQLITE_ROW) {
 	  // Should not happen
 	  sqlite3_finalize (stmt);
 	  return -1;
-	}
-      else
-	{
+	} else {
 	  // Update version number and remove old version
 	  int size = sqlite3_column_int (stmt, 2);
 
@@ -398,8 +418,41 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	  if (curr_ver != -1)
 	    remove_version (path, curr_ver);
 	}
-      sqlite3_finalize (stmt);
-    }
-
+    sqlite3_finalize (stmt);
+  }
+  
   return 0;
 }
+
+int ndnfs_statfs(const char *path, struct statvfs *si)
+{
+  //cout << "ndnfs_statfs: stat called." << endl;
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int ret = statvfs(fullPath, si);
+
+  if (ret == -1) {
+    cerr << "ndnfs_statfs: stat failed. Errno " << errno << endl;
+	return -errno;
+  }
+  
+  return 0;
+}
+
+int ndnfs_access(const char *path, int mask)
+{
+  //cout << "ndnfs_access: access called." << endl;
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int ret = access(fullPath, mask);
+
+  if (ret == -1) {
+    cerr << "ndnfs_access: access failed. Errno " << errno << endl;
+	return -errno;
+  }
+  
+  return 0;
+}
+

@@ -41,6 +41,20 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
 #endif
   char *temp = new char[ndnfs::seg_size];
+  
+  // TODO: Dependency on absolute path of mount point is unfavorable, while
+  // calling pread with fi->fh does seem intuitive, but it does not work, checking out why;
+/*
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int fd = open(fullPath, O_RDONLY);
+  
+  if (fd == -1) {
+    cerr << "write_segment: open error. Errno: " << errno << endl;
+    return -errno;
+  }*/
+  
   int read_len = pread(fi->fh, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
   
   if (read_len < 0) {
@@ -52,7 +66,9 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
 	read_len = limit;
   
   memcpy(output, temp, read_len);
+  
   delete temp;
+  //close(fd);
   
   return read_len;
 }
@@ -66,8 +82,6 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
 #ifdef NDNFS_DEBUG
   cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
 #endif
-
-  assert(len > 0);
 
   string file_path(path);
   string full_name = ndnfs::global_prefix + file_path;
@@ -123,13 +137,24 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   
-  // the actual writing of the file content.
+  // TODO: Dependency on absolute path of mount point is unfavorable, while
+  // calling pread with fi->fh does seem intuitive, but it does not work, checking out why;
+/*
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  int fd = open(fullPath, O_RDWR);
+  if (fd == -1) {
+    cerr << "write_segment: open error. Errno: " << errno << endl;
+    return -errno;
+  }
+*/  
   int write_len = pwrite(fi->fh, data, len, segment_to_size(seg));
   if (write_len < 0) {
     cerr << "write_segment: write error. Errno: " << errno << endl;
     return -errno;
   }
   
+  //close(fd);
   return write_len;
 }
 

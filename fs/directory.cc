@@ -25,36 +25,34 @@ using namespace std;
 int ndnfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
-    cout << "ndnfs_readdir: path=" << path << endl;
-#endif    
+  cout << "ndnfs_readdir: path=" << path << endl;
+#endif
+  // instead of reading from db, we read from actual fs for the directory structure
+  DIR *dp;
+  struct dirent *de;
 
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    if (sqlite3_step(stmt) != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return -ENOENT;
-    }
+  (void) offset;
+  (void) fi;
+  
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
 
-    sqlite3_finalize(stmt);
-    
-    filler(buf, ".", NULL, 0);           /* Current directory (.)  */
-    filler(buf, "..", NULL, 0);          /* Parent directory (..)  */
-    sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE parent = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        string path((const char *)sqlite3_column_text(stmt, 0));
-        size_t last_comp_pos = path.rfind('/');
-        if (last_comp_pos == std::string::npos)
-            continue;
-        
-        string name = path.substr(last_comp_pos + 1);
-        filler(buf, name.c_str(), NULL, 0);
-    }
+  dp = opendir(fullPath);
+  
+  if (dp == NULL)
+	return -errno;
 
-    sqlite3_finalize(stmt);
+  while ((de = readdir(dp)) != NULL) {
+	struct stat st;
+	memset(&st, 0, sizeof(st));
+	st.st_ino = de->d_ino;
+	st.st_mode = de->d_type << 12;
+	if (filler(buf, de->d_name, &st, 0))
+	  break;
+  }
 
-    return 0;
+  closedir(dp);
+  return 0;
 }
 
 int ndnfs_mkdir(const char *path, mode_t mode)
@@ -95,6 +93,15 @@ int ndnfs_mkdir(const char *path, mode_t mode)
         return 0;
     else
         return -EACCES;
+    
+	char fullPath[PATH_MAX];
+	abs_path(fullPath, path);
+	int ret = mkdir(fullPath, mode);
+
+	if (ret == -1) {
+		cerr << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
+		return -errno;
+	}
 }
 
 
@@ -145,5 +152,14 @@ int ndnfs_rmdir(const char *path)
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
 
+	char fullPath[PATH_MAX];
+	abs_path(fullPath, path);
+	int ret = rmdir(fullPath);
+
+	if (ret == -1) {
+		cerr << "ndnfs_rmdir: rmdir failed. Errno: " << errno << endl;
+		return -errno;
+	}
+	
     return 0;
 }

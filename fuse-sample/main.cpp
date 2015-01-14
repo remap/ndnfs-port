@@ -33,17 +33,22 @@
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
+    printf("getattr called for %s\n", path);
+    
 	int res;
 
 	res = lstat(path, stbuf);
 	if (res == -1)
 		return -errno;
-
+	
+    printf("getattr successful\n");
 	return 0;
 }
 
 static int xmp_access(const char *path, int mask)
 {
+    printf("access called.\n");
+    
 	int res;
 
 	res = access(path, mask);
@@ -69,6 +74,8 @@ static int xmp_readlink(const char *path, char *buf, size_t size)
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
+    printf("readdir called.\n");
+    
 	DIR *dp;
 	struct dirent *de;
 
@@ -94,6 +101,8 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
+    printf("mknod called.\n");
+    
 	int res;
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
@@ -114,6 +123,8 @@ static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 
 static int xmp_mkdir(const char *path, mode_t mode)
 {
+    printf("mkdir called.\n");
+    
 	int res;
 
 	res = mkdir(path, mode);
@@ -230,6 +241,8 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
+    printf("open called.\n");
+    
 	int res;
 
 	res = open(path, fi->flags);
@@ -282,6 +295,8 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
+    printf("stat called.\n");
+    
 	int res;
 
 	res = statvfs(path, stbuf);
@@ -293,6 +308,8 @@ static int xmp_statfs(const char *path, struct statvfs *stbuf)
 
 static int xmp_release(const char *path, struct fuse_file_info *fi)
 {
+    printf("release called.\n");
+    
 	/* Just a stub.	 This method is optional and can safely be left
 	   unimplemented */
 

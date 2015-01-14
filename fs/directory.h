@@ -30,5 +30,4 @@ int ndnfs_mkdir(const char *path, mode_t mode);
 
 int ndnfs_rmdir(const char *path);
 
-
 #endif

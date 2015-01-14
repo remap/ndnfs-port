@@ -28,7 +28,7 @@
 
 int ndnfs_open(const char *path, struct fuse_file_info *fi);
 
-int ndnfs_create(const char *path, mode_t mode, struct fuse_file_info *fi);
+int ndnfs_mknod(const char *path, mode_t mode, dev_t dev);
 
 int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 
@@ -40,6 +40,8 @@ int ndnfs_unlink(const char *path);
 
 int ndnfs_release(const char *path, struct fuse_file_info *fi);
 
-void abs_path(char dest[PATH_MAX], const char *path);
+int ndnfs_statfs(const char *path, struct statvfs *si);
+
+int ndnfs_access(const char *path, int mask);
 
 #endif

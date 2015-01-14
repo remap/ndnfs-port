@@ -27,41 +27,17 @@ int ndnfs_getattr(const char *path, struct stat *stbuf)
 #ifdef NDNFS_DEBUG
     cout << "ndnfs_getattr: path=" << path << endl;
 #endif
-
-    memset(stbuf, 0, sizeof(struct stat));
+    // instead of getting attr from sqlite database, we get attr from the file system
+	char fullPath[PATH_MAX] = "";
+	abs_path(fullPath, path);
     
-    int ret = 0;
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-	int type = sqlite3_column_int(stmt, 2);
-	
-	if (type == ndnfs::dir_type) {
-	    stbuf->st_mode = S_IFDIR | sqlite3_column_int(stmt, 3);
-	    stbuf->st_atime = sqlite3_column_int(stmt, 4);
-	    stbuf->st_mtime = sqlite3_column_int(stmt, 5);
-	    stbuf->st_nlink = 1;
-	} else if (type == ndnfs::file_type) {
-	    stbuf->st_mode = S_IFREG | sqlite3_column_int(stmt, 3);
-	    stbuf->st_atime = sqlite3_column_int(stmt, 4);
-	    stbuf->st_mtime = sqlite3_column_int(stmt, 5);
-	    stbuf->st_nlink = 1;
-	    stbuf->st_size = sqlite3_column_int(stmt, 6);
-	} else {
-	    ret = -ENOENT;
+    int ret = lstat(fullPath, stbuf);
+    
+	if (ret == -1) {
+	  cerr << "ndnfs_getattr: get_attr failed. Errno " << errno << endl;
+	  return -errno;
 	}
-    
-	// Use the same id for all files and dirs
-	stbuf->st_uid = ndnfs::user_id;
-	stbuf->st_gid = ndnfs::group_id;
-    } else {
-        ret = -ENOENT;
-    }
-    
-    sqlite3_finalize(stmt);
-
-    return ret;
+	return ret;
 }
 
 
@@ -77,7 +53,16 @@ int ndnfs_chmod(const char *path, mode_t mode)
     sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
     sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-
+    
+	char fullPath[PATH_MAX];
+	abs_path(fullPath, path);
+    
+    int res = chmod(fullPath, mode);
+    if (res == -1) {
+      cerr << "ndnfs_chmod: chmod failed. Errno: " << -errno << endl;
+      return -errno;
+    }
+    
     return 0;
 }
 
