@@ -60,7 +60,7 @@ int ndnfs_mkdir(const char *path, mode_t mode)
 #ifdef NDNFS_DEBUG
     cout << "ndnfs_mkdir: path=" << path << ", mode=0" << std::oct << mode << endl;
 #endif
-
+    
     string dir_path, dir_name;
     split_last_component(path, dir_path, dir_name);
     
@@ -69,7 +69,8 @@ int ndnfs_mkdir(const char *path, mode_t mode)
     sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
     int res = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-
+    
+    cout << "this works" << endl;
     if (res == SQLITE_ROW) {
         // Cannot create file that has conflicting file name
         return -EEXIST;
@@ -89,19 +90,23 @@ int ndnfs_mkdir(const char *path, mode_t mode)
     sqlite3_bind_int64(stmt, 9, -1); // temp_ver
     res = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
-    if (res == SQLITE_OK || res == SQLITE_DONE)
-        return 0;
-    else
+    
+    if (res != SQLITE_OK && res != SQLITE_DONE) {
         return -EACCES;
+    }
     
 	char fullPath[PATH_MAX];
 	abs_path(fullPath, path);
 	int ret = mkdir(fullPath, mode);
 
+	cout << "one would hope" << endl;
+
 	if (ret == -1) {
 		cerr << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
 		return -errno;
 	}
+	
+	return 0;
 }
 
 

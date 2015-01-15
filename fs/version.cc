@@ -296,7 +296,7 @@ void remove_versions(const char* path)
   sqlite3_prepare_v2(db, "SELECT current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step(stmt);
-  if(res == SQLITE_ROW){
+  if (res == SQLITE_ROW) {
 	int curr_ver = sqlite3_column_int(stmt, 0);
 	if (curr_ver != -1) {
 	  remove_version(path, curr_ver);

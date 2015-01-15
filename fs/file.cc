@@ -425,7 +425,9 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	  sqlite3_bind_int (stmt, 3, -1);  // set temp_version to -1
 	  sqlite3_bind_text (stmt, 4, path, -1, SQLITE_STATIC);
 	  sqlite3_step (stmt);
-
+      
+      // TODO: since older version is removed anyway, it makes sense to rely on system 
+      // function calls for multiple file accesses. Simplification of versioning method?
 	  if (curr_ver != -1)
 	    remove_version (path, curr_ver);
 	}
