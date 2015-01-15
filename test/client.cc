@@ -23,6 +23,8 @@
 #include <ndn-cpp/interest.hpp>
 #include <ndn-cpp/face.hpp>
 
+#include <fcntl.h>
+
 #include <ndn-cpp/security/identity/memory-identity-storage.hpp>
 #include <ndn-cpp/security/identity/memory-private-key-storage.hpp>
 #include <ndn-cpp/security/policy/no-verify-policy-manager.hpp>
@@ -149,90 +151,110 @@ ptr_lib::shared_ptr<KeyChain> keyChain;
 Name certificateName;
 
 void usage() {
-    fprintf(stderr, "Client is a command line browser for ndnfs. \nUsage: ./client\n");
-    exit(1);
+  fprintf(stderr, "Client is a command line browser for ndnfs. \nUsage: ./client\n");
+  exit(1);
 }
 
 int main (int argc, char **argv) {
-    int opt;
-    while ((opt = getopt(argc, argv, "h:")) != -1) {
-        switch (opt) {
-        case 'h': 
-            usage();
-            break;
-        default: 
-            usage();
-            break;
-        }
-    }
+  
+  // test for opening the same file two times without closing in the same thread.
+  /*
+  int fd0 = open("/tmp/file", O_RDWR);
+  int fd1 = open("/tmp/file", O_RDWR);
+  
+  if (fd1 < 0) {
+    cout << "Open failed for the second time." << endl;
+  }
+  
+  const char * writeData = "concede\n";
+  int size0 = pwrite(fd0, writeData, strlen(writeData), 0);
+  cout << "write for one, length " << size0 << endl;
+  int size1 = pwrite(fd1, writeData, strlen(writeData), size0);
+  cout << "write for two, length " << size1 << endl;
+  
+  close(fd0);
+  close(fd1);
+  */
+  
+  int opt;
+  while ((opt = getopt(argc, argv, "h:")) != -1) {
+	switch (opt) {
+	case 'h': 
+	  usage();
+	  break;
+	default: 
+	  usage();
+	  break;
+	}
+  }
 
-	// Initialize the keychain
-    ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new MemoryIdentityStorage());
-    ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new MemoryPrivateKeyStorage());
-    keyChain.reset
-      (new KeyChain
-        (ptr_lib::make_shared<IdentityManager>
-          (identityStorage, privateKeyStorage), ptr_lib::shared_ptr<NoVerifyPolicyManager>
-            (new NoVerifyPolicyManager())));
-    
-    // Initialize the storage.
-    Name keyName("/testname/DSK-123");
-    certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
-           (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
-    identityStorage->addKey(keyName, KEY_TYPE_RSA, Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
-    privateKeyStorage->setKeyPairForKeyName
-      (keyName, KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
-       sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
-       sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
-    
-    face.setCommandSigningInfo(*keyChain, certificateName);
+  // Initialize the keychain
+  ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new MemoryIdentityStorage());
+  ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new MemoryPrivateKeyStorage());
+  keyChain.reset
+	(new KeyChain
+	  (ptr_lib::make_shared<IdentityManager>
+		(identityStorage, privateKeyStorage), ptr_lib::shared_ptr<NoVerifyPolicyManager>
+		  (new NoVerifyPolicyManager())));
+  
+  // Initialize the storage.
+  Name keyName("/testname/DSK-123");
+  certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
+		 (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
+  identityStorage->addKey(keyName, KEY_TYPE_RSA, Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
+  privateKeyStorage->setKeyPairForKeyName
+	(keyName, KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
+	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
+	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
+  
+  face.setCommandSigningInfo(*keyChain, certificateName);
 
-	while (true) {
-        if (isStdinReady()) {
-            string input = stdinReadLine();
-            if (strstr(input.c_str(), SHOW_COMMAND)) {
-                string nameStr = input.substr(strlen(SHOW_COMMAND));
-                
-                cout << "Displaying info of file by name: " << nameStr << endl;
-                
-                Handler handler(face, *(keyChain.get()), nameStr);
-                Name name(nameStr);
-                Interest interest(name);
-                
-                // AttrData is the protobuf encoded info about a file or folder
-                face.expressInterest
-                  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
-                   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
-            }
-            else if (strstr(input.c_str(), FETCH_COMMAND)) {
-                vector<string> nameStrs = split(input.substr(strlen(FETCH_COMMAND)), ' ');
-                if (nameStrs.size() != 2) {
-                  cout << "Expecting 2 inputs, ndnfs file name, and write file name" << endl;
-                  continue;
-                }
-                cout << "Saving file: " << nameStrs[0] << " to " << nameStrs[1] << endl;
-                
-                Handler handler(face, *(keyChain.get()), nameStrs[0], nameStrs[1], true, true);
-                Name name(nameStrs[0]);
-                Interest interest(name);
-                
-                // AttrData is the protobuf encoded info about a file or folder
-                face.expressInterest
-                  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
-                   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
-            }
-            else if (strstr(input.c_str(), HELP_COMMAND)) {
-            
-            }
-            else {
-                cout << input << ": Command unknown." << endl;
-            }
-        }
+  while (true) {
+	if (isStdinReady()) {
+	  string input = stdinReadLine();
+	  if (strstr(input.c_str(), SHOW_COMMAND)) {
+		string nameStr = input.substr(strlen(SHOW_COMMAND));
+		
+		cout << "Displaying info of file by name: " << nameStr << endl;
+		
+		Handler handler(face, *(keyChain.get()), nameStr);
+		Name name(nameStr);
+		Interest interest(name);
+		
+		// AttrData is the protobuf encoded info about a file or folder
+		face.expressInterest
+		  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
+		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
+	  }
+	  else if (strstr(input.c_str(), FETCH_COMMAND)) {
+		vector<string> nameStrs = split(input.substr(strlen(FETCH_COMMAND)), ' ');
+		if (nameStrs.size() != 2) {
+		  cout << "Expecting 2 inputs, ndnfs file name, and write file name" << endl;
+		  continue;
+		}
+		cout << "Saving file: " << nameStrs[0] << " to " << nameStrs[1] << endl;
+		
+		Handler handler(face, *(keyChain.get()), nameStrs[0], nameStrs[1], true, true);
+		Name name(nameStrs[0]);
+		Interest interest(name);
+		
+		// AttrData is the protobuf encoded info about a file or folder
+		face.expressInterest
+		  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
+		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
+	  }
+	  else if (strstr(input.c_str(), HELP_COMMAND)) {
+	  
+	  }
+	  else {
+		cout << input << ": Command unknown." << endl;
+	  }
+	}
 
-		face.processEvents();
-		// We need to sleep for a few milliseconds so we don't use 100% of the CPU.
-		usleep(10000);
-    }
-    
-    return 0;
+	face.processEvents();
+	// We need to sleep for a few milliseconds so we don't use 100% of the CPU.
+	usleep(10000);
+  }
+  
+  return 0;
 }

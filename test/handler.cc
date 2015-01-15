@@ -29,10 +29,10 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
     string marker = comp.toEscapedString();
     if (marker == "%C1.FS.dir") {
         ndnfs::DirInfoArray infoa;
-        if(infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()){
+        if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
             cout << "This is a directory:" << endl;
             int n = infoa.di_size();
-            for(int i = 0; i<n; i++){
+            for (int i = 0; i<n; i++) {
                 const ndnfs::DirInfo &info = infoa.di(i);
                 cout << info.path();
                 if(info.type() == 0)

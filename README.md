@@ -8,40 +8,38 @@ Report bug to Zhehao. wangzhehao410305@gmail.com
 
 ### Usage
 
-**This usage's not for the current version, update in progress**
-
 NDNFS is an NDN-friendly file system. When mounted, data in the file system can be fetched through NDN through NDNFS-server.
 
 To run on Mac:
 <pre>
     $ mkdir /tmp/ndnfs
-    $ ./build/ndnfs -s /tmp/ndnfs
+    $ mkdir /tmp/dir
+    $ ./build/ndnfs -s /tmp/dir /tmp/ndnfs
 </pre>
+/tmp/dir is where files are actually stored in the local file system; while /tmp/ndnfs is the mount point.
+
+'-s' flag tells fuse to run single threaded.
+
 Use '-d' flag to see all debug output of ndnfs:
 <pre>
-    $ ./build/ndnfs -d /tmp/ndnfs
+    $ ./build/ndnfs -d /tmp/dir /tmp/ndnfs
 </pre>
-Use '-f' flag to run in foreground and see debug info (if you compiled with --debug option):
+Use '-f' flag to run in foreground and see debug info:
 <pre>
-    $ ./build/ndnfs -s -f /tmp/ndnfs
+    $ ./build/ndnfs -s -f /tmp/dir /tmp/ndnfs
 </pre>
 If '-f' is used, NDNFS is unmounted automatically when you kill 'ndnfs' process.
 
-This will mount the file system to local folder '/tmp/ndnfs/'. To unmount NDNFS, type:
+To unmount NDNFS, type:
 <pre>
     $ umount /tmp/ndnfs
 </pre>
-If the resource is busy, use
+To force unmount, use '-f' flag:
 <pre>
     $ umount -f /tmp/ndnfs
 </pre>
-instead.
 
-To specify a global prefix for all the files stored in NDNFS:
-<pre>
-    $ ./build/ndnfs -s -f /tmp/ndnfs -o prefix=/ndn/broadcast/ndnfs
-</pre>
-In this case, the NDN Content Object name is the global prefix + absolute file path.
+Coming soon: Specify ndnfs prefix and database file path;
 
 ### NDNFS-server
 

@@ -191,8 +191,8 @@ struct ndnfs_config {
 #define NDNFS_OPT(t, p, v) { t, offsetof(struct ndnfs_config, p), v }
 
 static struct fuse_opt ndnfs_opts[] = {
-    NDNFS_OPT("prefix=%s", prefix, 0),
-    FUSE_OPT_END
+  NDNFS_OPT("prefix=%s", prefix, 0),
+  FUSE_OPT_END
 };
 
 void abs_path(char *dest, const char *path)
@@ -201,89 +201,96 @@ void abs_path(char *dest, const char *path)
   strcat(dest, path);
 }
 
+void usage()
+{
+  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] " << endl;
+  return;
+}
+
 int main(int argc, char **argv)
 {
-    umask(0);
-    
-    // Initialize the keychain
-    ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
-    ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
-    ndnfs::keyChain.reset
-      (new ndn::KeyChain
-        (ndn::ptr_lib::make_shared<ndn::IdentityManager>
-          (identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
-            (new ndn::NoVerifyPolicyManager())));
-    
-    ndn::Name keyName("/testname/DSK-123");
-    ndnfs::certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
-           (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
-    identityStorage->addKey(keyName, ndn::KEY_TYPE_RSA, ndn::Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
-    privateKeyStorage->setKeyPairForKeyName
-      (keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
-       sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
-       sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
-    
-    ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
-    
-    cout << "main: NDNFS version 0.3" << endl;
-    
-    // Extract the root path (mount point) from running parameters;
-    // it is not advised for fuse-mod to know mount point, as mount point may not be
-    // static, and it may be cloned. Wonder what the common practice is for this.
-    
-    // First parameter not starting with '-' is the root path; 
-	int i = 0;
-	for(i = 1; (i < argc && argv[i][0] == '-'); i++);
+  umask(0);
+  
+  // Initialize the keychain
+  ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
+  ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
+  ndnfs::keyChain.reset
+	(new ndn::KeyChain
+	  (ndn::ptr_lib::make_shared<ndn::IdentityManager>
+		(identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
+		  (new ndn::NoVerifyPolicyManager())));
+  
+  ndn::Name keyName("/testname/DSK-123");
+  ndnfs::certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
+		 (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
+  identityStorage->addKey(keyName, ndn::KEY_TYPE_RSA, ndn::Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
+  privateKeyStorage->setKeyPairForKeyName
+	(keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
+	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
+	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
+  
+  ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
+  
+  cout << "main: NDNFS version 0.3" << endl;
+  
+  // Extract the root path (mount point) from running parameters;
+  // it is not advised for fuse-mod to know mount point, as mount point may not be
+  // static, and it may be cloned. Wonder what the common practice is for this.
+  
+  // First parameter not starting with '-' is the root path; 
+  int i = 0;
+  for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
-	if(i == argc) {
-	  cerr << "main: missing mount point." << endl;
-	  return -1;
-	}
+  if(i == argc) {
+	cerr << "main: missing actual folder directory." << endl;
+	usage();
+	return -1;
+  }
 
-	ndnfs::root_path = string(realpath(argv[i], NULL));
-	
-    for(; i < argc; i++) {
-	  argv[i] = argv[i + 1];
-	}
-	argc--;
-	
-	if (ndnfs::root_path.back() == '/') {
-	  ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
-	}
-	cout << "main: root path is " << ndnfs::root_path << endl;
-	
-    // uid and gid will be set to that of the user who starts the fuse process
-    ndnfs::user_id = getuid();
-    ndnfs::group_id = getgid();
+  ndnfs::root_path = string(realpath(argv[i], NULL));
+  
+  for(; i < argc; i++) {
+	argv[i] = argv[i + 1];
+  }
+  argc--;
+  
+  if (ndnfs::root_path.back() == '/') {
+	ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
+  }
+  cout << "main: root path is " << ndnfs::root_path << endl;
+  
+  // uid and gid will be set to that of the user who starts the fuse process
+  ndnfs::user_id = getuid();
+  ndnfs::group_id = getgid();
 
-    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    struct ndnfs_config conf;
-    memset(&conf, 0, sizeof(conf));
-    fuse_opt_parse(&args, &conf, ndnfs_opts, NULL);
+  struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+  struct ndnfs_config conf;
+  memset(&conf, 0, sizeof(conf));
+  fuse_opt_parse(&args, &conf, ndnfs_opts, NULL);
 
-    if (conf.prefix != NULL) {
-        ndn::Name InterestBaseName(conf.prefix);
-        ndnfs::global_prefix = InterestBaseName.toUri();
-    }
-    cout << "main: global prefix is " << ndnfs::global_prefix << endl;
+  if (conf.prefix != NULL) {
+	ndn::Name InterestBaseName(conf.prefix);
+	ndnfs::global_prefix = InterestBaseName.toUri();
+  }
+  cout << "main: global prefix is " << ndnfs::global_prefix << endl;
 
-    cout << "main: test sqlite connection..." << endl;
+  cout << "main: test sqlite connection..." << endl;
 
-    if (sqlite3_open(db_name, &db) == SQLITE_OK) {
-        cout << "main: sqlite db open ok" << endl;
-    } else {
-        cout << "main: cannot connect to sqlite db, quit" << endl;
-        sqlite3_close(db);
-        return -1;
-    }
+  if (sqlite3_open(db_name, &db) == SQLITE_OK) {
+	cout << "main: sqlite db open ok" << endl;
+  } else {
+	cout << "main: cannot connect to sqlite db, quit" << endl;
+	sqlite3_close(db);
+	return -1;
+  }
     
-    cout << "main: init tables in sqlite db..." << endl;
-    
-    // Init tables in database
-    
-    // Since actual data is not stored in database,
-    // for each re-run, does it make sense to recreate the table no matter if it already exists.
-    const char* INIT_FS_TABLE = "\
+  cout << "main: init tables in sqlite db..." << endl;
+  
+  // Init tables in database
+  
+  // Since actual data is not stored in database,
+  // for each re-run, does it make sense to recreate the table no matter if it already exists.
+  const char* INIT_FS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                        \n\
   file_system(                                    \n\
     path                 TEXT NOT NULL,           \n\
@@ -303,9 +310,9 @@ CREATE INDEX id_path ON file_system (path);       \n\
 CREATE INDEX id_parent ON file_system (parent);   \n\
 ";
 
-    sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
+  sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
 
-    const char* INIT_VER_TABLE = "\
+  const char* INIT_VER_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                   \n\
   file_versions(                                             \n\
     path          TEXT NOT NULL,                             \n\
@@ -317,9 +324,9 @@ CREATE TABLE IF NOT EXISTS                                   \n\
 CREATE INDEX id_ver ON file_versions (path, version);        \n\
 ";
 
-    sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
+  sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
 
-    const char* INIT_SEG_TABLE = "\
+  const char* INIT_SEG_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                        \n\
   file_segments(                                                  \n\
     path        TEXT NOT NULL,                                    \n\
@@ -332,38 +339,38 @@ CREATE TABLE IF NOT EXISTS                                        \n\
 CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
 ";
 
-    sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
+  sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
 
-    cout << "main: ok" << endl;
+  cout << "main: ok" << endl;
 
-    cout << "main: initializing file mime_type inference..." << endl;
-    initialize_ext_mime_map();
+  cout << "main: initializing file mime_type inference..." << endl;
+  initialize_ext_mime_map();
 
-    cout << "main: mount root folder..." << endl;
+  cout << "main: mount root folder..." << endl;
 
-    int now = time(0);
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, 
-                       "INSERT INTO file_system (path, parent, type, mode, atime, mtime, size, current_version, temp_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", 
-                       -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, "/", -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, "", -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 3, ndnfs::dir_type);
-    sqlite3_bind_int(stmt, 4, 0777);
-    sqlite3_bind_int(stmt, 5, now);
-    sqlite3_bind_int(stmt, 6, now);
-    sqlite3_bind_int(stmt, 7, -1);  // size
-    sqlite3_bind_int(stmt, 8, -1);  // current version
-    sqlite3_bind_int(stmt, 9, -1);  // temp version
-    int res = sqlite3_step(stmt);
-    if (res == SQLITE_OK || res == SQLITE_DONE) {
-        cout << "main: OK" << endl;
-    }
+  int now = time(0);
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, 
+					 "INSERT INTO file_system (path, parent, type, mode, atime, mtime, size, current_version, temp_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", 
+					 -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, "/", -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, "", -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 3, ndnfs::dir_type);
+  sqlite3_bind_int(stmt, 4, 0777);
+  sqlite3_bind_int(stmt, 5, now);
+  sqlite3_bind_int(stmt, 6, now);
+  sqlite3_bind_int(stmt, 7, -1);  // size
+  sqlite3_bind_int(stmt, 8, -1);  // current version
+  sqlite3_bind_int(stmt, 9, -1);  // temp version
+  int res = sqlite3_step(stmt);
+  if (res == SQLITE_OK || res == SQLITE_DONE) {
+	cout << "main: OK" << endl;
+  }
 
-    sqlite3_finalize(stmt);
-    
-    create_fuse_operations(&ndnfs_fs_ops);
-    
-    cout << "main: enter FUSE main loop" << endl << endl;
-    return fuse_main(args.argc, args.argv, &ndnfs_fs_ops, NULL);
+  sqlite3_finalize(stmt);
+  
+  create_fuse_operations(&ndnfs_fs_ops);
+  
+  cout << "main: enter FUSE main loop" << endl << endl;
+  return fuse_main(args.argc, args.argv, &ndnfs_fs_ops, NULL);
 }
