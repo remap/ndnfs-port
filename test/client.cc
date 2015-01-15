@@ -244,7 +244,7 @@ int main (int argc, char **argv) {
 		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
 	  }
 	  else if (strstr(input.c_str(), HELP_COMMAND)) {
-	  
+	    
 	  }
 	  else {
 		cout << input << ": Command unknown." << endl;

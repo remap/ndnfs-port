@@ -263,14 +263,17 @@ void processInterest(const Name& interest_name, Transport& transport) {
             return;
         }
 		
-        sendFile(path, version, sqlite3_column_int(stmt,2), sqlite3_column_int(stmt,3), transport);
+		// TODO: when asking for file with version specified, current server does not query for the mime_type
+        sendFile(path, "", version, sqlite3_column_int(stmt,2), sqlite3_column_int(stmt,3), transport);
         sqlite3_finalize(stmt);
     }
     // The client is asking for 'generic' info about a file/folder in ndnfs
     else if (ret == 1) {
         sqlite3_stmt *stmt;
         sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?", -1, &stmt, 0);
+        
         sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+        
         if (sqlite3_step(stmt) != SQLITE_ROW) {
 #ifdef NDNFS_DEBUG
             cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
@@ -279,6 +282,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
             return;
         }
         
+        string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9)));
         int type = sqlite3_column_int(stmt,2);
         if (type == 1) {
 #ifdef NDNFS_DEBUG
@@ -297,7 +301,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
                 return;
             }
             
-            sendFile(path, version, sqlite3_column_int(stmt,2), sqlite3_column_int(stmt,3), transport);
+            sendFile(path, mimeType, version, sqlite3_column_int(stmt,2), sqlite3_column_int(stmt,3), transport);
             sqlite3_finalize(stmt);
         } else {
 #ifdef NDNFS_DEBUG
@@ -364,11 +368,17 @@ void processInterest(const Name& interest_name, Transport& transport) {
     }
 }
 
-void sendFile(const string& path, int version, int sizef, int totalseg, Transport& transport) {
+void sendFile(const string& path, const string& mimeType, int version, int sizef, int totalseg, Transport& transport) {
     ndnfs::FileInfo infof;
+    
     infof.set_size(sizef);
     infof.set_totalseg(totalseg);
     infof.set_version(version);
+    
+    if (mimeType != "") {
+      infof.set_mimetype(mimeType);
+    }
+    
     int size = infof.ByteSize();
     
     char *wireData = new char[size];

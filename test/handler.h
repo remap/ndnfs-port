@@ -10,8 +10,21 @@
 #include <ndn-cpp/security/identity/memory-private-key-storage.hpp>
 #include <ndn-cpp/security/policy/no-verify-policy-manager.hpp>
 
+/**
+ * Handler(client) class handles request from ndnfs client.
+ * Currently requests include: fetch metadata and fetch whole file.
+ */
 class Handler {
 public:
+  /**
+   * Handler constructor takes a face, its thread-safetiness should be handled in calling function.
+   * @param face Face used for this handler request
+   * @param keyChain Keychain used for verifying received data
+   * @param nameStr Name string from the client's input, used by expressInterest
+   * @param fileName Name of local file to save into when fetching
+   * @param fetchFile Flag for fetching the entire file, or only the attribute
+   * @param doVerification Flag for doing verification or not
+   */
   Handler
     (ndn::Face &face, ndn::KeyChain &keyChain, std::string nameStr, 
      std::string fileName = "", bool fetchFile = false, bool doVerification = true);

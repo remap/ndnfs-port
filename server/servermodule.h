@@ -82,6 +82,6 @@ void processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 
 void sendDir(const std::string& path, int mtime, ndn::Transport& transport);
 
-void sendFile(const std::string& path, int version, int sizef, int totalseg, ndn::Transport& transport);
+void sendFile(const std::string& path, const std::string& mimeType, int version, int sizef, int totalseg, ndn::Transport& transport);
 
 #endif // __SERVER_MODULE_H__

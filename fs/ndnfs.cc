@@ -242,7 +242,7 @@ int main(int argc, char **argv)
   for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
   if(i == argc) {
-	cerr << "main: missing actual folder directory." << endl;
+	cerr << "main: missing actual folder path." << endl;
 	usage();
 	return -1;
   }

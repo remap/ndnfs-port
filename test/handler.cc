@@ -56,6 +56,9 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
             cout << "size:  " << infof.size() << endl;
             cout << "version:   " << infof.version() << endl;
             cout << "total segments: " << infof.totalseg() << endl;
+            if (infof.mimetype() != "") {
+              cout << "mime type: " << infof.mimetype() << endl;
+            }
             
             totalSegment_ = infof.totalseg();
             
