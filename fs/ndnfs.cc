@@ -166,27 +166,27 @@ int ndnfs::group_id = 0;
 
 static void create_fuse_operations(struct fuse_operations *fuse_op)
 {
-    fuse_op->getattr  = ndnfs_getattr;
-    fuse_op->chmod    = ndnfs_chmod;
-    fuse_op->setxattr = ndnfs_setxattr;
-    fuse_op->open     = ndnfs_open;
-    fuse_op->read     = ndnfs_read;
-    fuse_op->readdir  = ndnfs_readdir;
-    fuse_op->mknod    = ndnfs_mknod;
-    fuse_op->write    = ndnfs_write;
-    fuse_op->truncate = ndnfs_truncate;
-    fuse_op->release  = ndnfs_release;
-    fuse_op->unlink   = ndnfs_unlink;
-    fuse_op->mkdir    = ndnfs_mkdir;
-    fuse_op->rmdir    = ndnfs_rmdir;
-    fuse_op->statfs   = ndnfs_statfs;
-    fuse_op->access   = ndnfs_access;
+  fuse_op->getattr  = ndnfs_getattr;
+  fuse_op->chmod    = ndnfs_chmod;
+  fuse_op->setxattr = ndnfs_setxattr;
+  fuse_op->open     = ndnfs_open;
+  fuse_op->read     = ndnfs_read;
+  fuse_op->readdir  = ndnfs_readdir;
+  fuse_op->mknod    = ndnfs_mknod;
+  fuse_op->write    = ndnfs_write;
+  fuse_op->truncate = ndnfs_truncate;
+  fuse_op->release  = ndnfs_release;
+  fuse_op->unlink   = ndnfs_unlink;
+  fuse_op->mkdir    = ndnfs_mkdir;
+  fuse_op->rmdir    = ndnfs_rmdir;
+  fuse_op->statfs   = ndnfs_statfs;
+  fuse_op->access   = ndnfs_access;
 }
 
 static struct fuse_operations ndnfs_fs_ops;
 
 struct ndnfs_config {
-    char *prefix;
+  char *prefix;
 };
 
 #define NDNFS_OPT(t, p, v) { t, offsetof(struct ndnfs_config, p), v }

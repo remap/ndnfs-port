@@ -208,36 +208,54 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
-    cout << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
+  cout << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
 #endif
 
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "SELECT type, current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-    int res = sqlite3_step(stmt);
-    if (res != SQLITE_ROW) {
-        sqlite3_finalize(stmt);
-        return -ENOENT;
-    }
-    
-    int type = sqlite3_column_int(stmt, 0);
-    int curr_ver = sqlite3_column_int(stmt, 1);
-    if (type != ndnfs::file_type) {
-        sqlite3_finalize(stmt);
-        return -EINVAL;
-    }
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT type, current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+  int res = sqlite3_step(stmt);
+  if (res != SQLITE_ROW) {
+	  sqlite3_finalize(stmt);
+	  return -ENOENT;
+  }
+  
+  int type = sqlite3_column_int(stmt, 0);
+  int curr_ver = sqlite3_column_int(stmt, 1);
+  if (type != ndnfs::file_type) {
+	  sqlite3_finalize(stmt);
+	  return -EINVAL;
+  }
 
-    sqlite3_finalize(stmt);
+  sqlite3_finalize(stmt);
 
-    int size_read = read_version(path, curr_ver, buf, size, offset, fi);
+  //int size_read = read_version(path, curr_ver, buf, size, offset, fi);
 
-    sqlite3_prepare_v2(db, "UPDATE file_system SET atime = ? WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_int(stmt, 1, (int)time(0));
-    sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-
-    return size_read;
+  sqlite3_prepare_v2(db, "UPDATE file_system SET atime = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_int(stmt, 1, (int)time(0));
+  sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+  
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int fd = open(fullPath, O_RDONLY);
+  
+  if (fd == -1) {
+    cerr << "ndnfs_read: open error. Errno: " << errno << endl;
+    return -errno;
+  }
+  
+  int read_len = pread(fd, buf, size, offset);
+  
+  if (read_len < 0) {
+    cerr << "ndnfs_read: read error. Errno: " << errno << endl;
+    return -errno;
+  }
+  
+  close(fd);
+  return read_len;
 }
 
 
@@ -280,7 +298,24 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   if (res != SQLITE_OK && res != SQLITE_DONE)
     return -EACCES;
   
-  return (int) size;  // return the number of bytes written on success
+      
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  int fd = open(fullPath, O_RDWR);
+  if (fd == -1) {
+    cerr << "ndnfs_write: open error. Errno: " << errno << endl;
+    return -errno;
+  }
+
+  int write_len = pwrite(fd, buf, size, offset);
+  if (write_len < 0) {
+    cerr << "ndnfs_write: write error. Errno: " << errno << endl;
+    return -errno;
+  }
+  
+  close(fd);
+  
+  return write_len;  // return the number of bytes written on success
 }
 
 
@@ -381,7 +416,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	sqlite3_finalize (stmt);
 	return -ENOENT;
   }
-
+  
   int type = sqlite3_column_int (stmt, 0);
   int curr_ver = sqlite3_column_int (stmt, 1);
   int temp_ver = sqlite3_column_int (stmt, 2);
@@ -433,6 +468,9 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	}
     sqlite3_finalize (stmt);
   }
+  
+  // After releasing, start a new signing thread for the file; 
+  // If a signing thread for the file in question has already started, kill that thread.
   
   return 0;
 }

@@ -48,7 +48,7 @@ int read_segment(const char* path, const int ver, const int seg, char *output, c
   int fd = open(fullPath, O_RDONLY);
   
   if (fd == -1) {
-    cerr << "write_segment: open error. Errno: " << errno << endl;
+    cerr << "read_segment: open error. Errno: " << errno << endl;
     return -errno;
   }
   
@@ -132,23 +132,8 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   sqlite3_bind_int(stmt,5,segment_to_size(seg));
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
-  
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
-  int fd = open(fullPath, O_RDWR);
-  if (fd == -1) {
-    cerr << "write_segment: open error. Errno: " << errno << endl;
-    return -errno;
-  }
 
-  int write_len = pwrite(fd, data, len, segment_to_size(seg));
-  if (write_len < 0) {
-    cerr << "write_segment: write error. Errno: " << errno << endl;
-    return -errno;
-  }
-  
-  close(fd);
-  return write_len;
+  return sig_size;
 }
 
 void remove_segments(const char* path, const int ver, const int start/* = 0 */)
