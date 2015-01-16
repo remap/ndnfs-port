@@ -42,6 +42,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 using namespace std;
 using namespace ndn;
@@ -241,12 +242,27 @@ int main(int argc, char **argv)
   int i = 0;
   for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
-  if(i == argc) {
+  if (i == argc) {
 	cerr << "main: missing actual folder path." << endl;
 	usage();
 	return -1;
   }
-
+  
+  // check if 'root_path' exists
+  struct stat s;
+  int err = stat(argv[i], &s);
+  if (err == -1) {
+	cerr << "main: actual folder does not exist." << endl;
+	return 0;
+  } else {
+	if(S_ISDIR(s.st_mode)) {
+	  cout << "main: root path is " << realpath(argv[i], NULL) << endl;
+	} else {
+      cerr << "main: actual folder is a file." << endl;
+      return 0;
+	}
+  }
+ 
   ndnfs::root_path = string(realpath(argv[i], NULL));
   
   for(; i < argc; i++) {
@@ -257,8 +273,7 @@ int main(int argc, char **argv)
   if (ndnfs::root_path.back() == '/') {
 	ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
   }
-  cout << "main: root path is " << ndnfs::root_path << endl;
-  
+   
   // uid and gid will be set to that of the user who starts the fuse process
   ndnfs::user_id = getuid();
   ndnfs::group_id = getgid();
