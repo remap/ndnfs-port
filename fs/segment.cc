@@ -33,45 +33,6 @@ using namespace ndn;
 
 /**
  * version parameter is not used right now, as duplicate_version is now a stub, 
- * and older versions of the file are not actually stored or accessible.
- */
-int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset, struct fuse_file_info *fi)
-{
-#ifdef NDNFS_DEBUG
-  cout << "read_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", limit=" << limit << ", offset=" << offset << endl;
-#endif
-  char *temp = new char[ndnfs::seg_size];
-  
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
-  
-  int fd = open(fullPath, O_RDONLY);
-  
-  if (fd == -1) {
-    cerr << "read_segment: open error. Errno: " << errno << endl;
-    return -errno;
-  }
-  
-  int read_len = pread(fd, temp, ndnfs::seg_size, segment_to_size(seg) + offset);
-  
-  if (read_len < 0) {
-    cerr << "read_segment: read error. Errno: " << errno << endl;
-    return -errno;
-  }
-  
-  if (read_len > limit)  // Don't write across the limit
-	read_len = limit;
-  
-  memcpy(output, temp, read_len);
-  
-  delete temp;
-  close(fd);
-  
-  return read_len;
-}
-
-/**
- * version parameter is not used right now, as duplicate_version is now a stub, 
  * and write does not create/write to a new file by the name of the version.
  */
 int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi)

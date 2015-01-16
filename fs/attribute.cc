@@ -27,8 +27,7 @@ int ndnfs_getattr(const char *path, struct stat *stbuf)
 #ifdef NDNFS_DEBUG
     cout << "ndnfs_getattr: path=" << path << endl;
 #endif
-    // instead of getting attr from sqlite database, we get attr from the file system
-	char fullPath[PATH_MAX] = "";
+    char fullPath[PATH_MAX];
 	abs_path(fullPath, path);
     
     int ret = lstat(fullPath, stbuf);
@@ -47,14 +46,7 @@ int ndnfs_chmod(const char *path, mode_t mode)
     cout << "ndnfs_chmod: path=" << path << ", change mode to " << std::oct << mode << endl;
 #endif
     
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db, "UPDATE file_system SET mode = ? WHERE path = ?;", -1, &stmt, 0);
-    sqlite3_bind_int(stmt, 1, mode);
-    sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-    
-	char fullPath[PATH_MAX];
+    char fullPath[PATH_MAX];
 	abs_path(fullPath, path);
     
     int res = chmod(fullPath, mode);

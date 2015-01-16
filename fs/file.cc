@@ -41,7 +41,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   
   // Ndnfs versioning operation
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
   if (res != SQLITE_ROW) {
@@ -49,52 +49,22 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 	return -ENOENT;
   }
     
-  int type = sqlite3_column_int (stmt, 0);
-  int curr_ver = sqlite3_column_int (stmt, 1);
-  int temp_ver = sqlite3_column_int (stmt, 2);
+  int curr_ver = sqlite3_column_int (stmt, 0);
   sqlite3_finalize (stmt);
-
-  if (type != ndnfs::file_type)
-    return -EISDIR;
   
+  int temp_ver = time(0);
+      
   switch (fi->flags & O_ACCMODE) {
     case O_RDONLY:
       // Should we also update version in this case (since the atime has changed)?
       break;
     case O_WRONLY:
     case O_RDWR:
-      // Create temporary version for file editing
-        
-      // If there is already a temp version there, it means that someone is writing to the file now
-      // We should reject this open request
-      // This effectively implements some sort of file locking
-      if (temp_ver != -1)
-        return -EACCES;
-
-      // Create a new version number for temp_ver based on system time
-      temp_ver = time(0);
-      
-      // The possibility of (temp_ver == curr_ver) exists, especially in open call directly after mknod 
-      if (temp_ver <= curr_ver) {
-        temp_ver = curr_ver + 1;
-      }
       
       // Copy old data from current version to the temp version
-      // An version entry for temp_ver will be inserted in this function
       if (duplicate_version (path, curr_ver, temp_ver) < 0)
         return -EACCES;
 
-      // Update file entry with temp version info
-      sqlite3_prepare_v2 (db, "UPDATE file_system SET atime = ?, temp_version = ? WHERE path = ?;", -1, &stmt, 0);
-      sqlite3_bind_int (stmt, 1, temp_ver);
-      sqlite3_bind_int (stmt, 2, temp_ver);
-      sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
-      res = sqlite3_step (stmt);
-      sqlite3_finalize (stmt);
-
-      if (res != SQLITE_OK && res != SQLITE_DONE)
-        return -EACCES;
-      
       break;
     default:
       break;
@@ -104,9 +74,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 }
 
 /**
- * Create function is replaced with mknod, which means instead of writing to the 
- * tmp_version field in the database (because create include open with RDWR), we
- * write to the current_version field.
+ * Create function is replaced with mknod
  */
 int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 {
@@ -114,9 +82,6 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   cout << "ndnfs_mknod: path=" << path << ", mode=0" << std::oct << mode << endl;
 #endif
 
-  string dir_path, file_name;
-  split_last_component(path, dir_path, file_name);
-  
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
@@ -129,52 +94,34 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   
   sqlite3_finalize(stmt);
 
-  //XXX: We don't check this for now.
-  // // Cannot create file without creating necessary folders in advance
+  // TODO: We cannot create file without creating necessary folders in advance
   
   // Infer the mime_type of the file based on extension
   char mime_type[100] = "";
   mime_infer(mime_type, path);
   
-  // Generate first version for the new file
+  // Generate first version entry for the new file
   int ver = time(0);
   
-  // Create first version for the new file
-  sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?, ?, ?, ?);", -1, &stmt, 0);
+  sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version) VALUES (?, ?);", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 2, ver);
-  sqlite3_bind_int(stmt, 3, 0);
-  sqlite3_bind_int(stmt, 4, 0);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
   // Add the file entry to database
   sqlite3_prepare_v2(db, 
 					 "INSERT INTO file_system \
-					  (path, parent, type, mode, atime, mtime, size, current_version, temp_version, mime_type) \
-					  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", 
+					  (path, current_version, mime_type, ready_signed) \
+					  VALUES (?, ?, ?, ?);", 
 					 -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 3, ndnfs::file_type);
-  sqlite3_bind_int(stmt, 4, mode);
-  sqlite3_bind_int(stmt, 5, ver);
-  sqlite3_bind_int(stmt, 6, ver);
-  sqlite3_bind_int(stmt, 7, 0);  // size
-  sqlite3_bind_int(stmt, 8, ver);  // current version
-  sqlite3_bind_int(stmt, 9, -1);  // temp version
-  sqlite3_bind_text(stmt, 10, mime_type, -1, SQLITE_STATIC); // mime_type based on ext
+  sqlite3_bind_int(stmt, 2, ver);  // current version
+  sqlite3_bind_text(stmt, 3, mime_type, -1, SQLITE_STATIC); // mime_type based on ext
   
   enum SignatureState signatureState = NOT_READY;
-  sqlite3_bind_int(stmt, 11, signatureState);
+  sqlite3_bind_int(stmt, 4, signatureState);
   
-  sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-
-  // Update mtime for parent folder
-  sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int(stmt, 1, ver);
-  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   
@@ -185,6 +132,7 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   int ret = 0;
   
   // For OS other than Linux, calling open directly does not seem to be enough;
+  // On OS X, open is called instead.
   if (S_ISREG(mode)) {
     ret = open(fullPath, O_CREAT | O_EXCL | O_WRONLY, mode);
     if (ret >= 0) {
@@ -204,39 +152,26 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   return 0;
 }
 
-
 int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 #ifdef NDNFS_DEBUG
   cout << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
 #endif
-
+  
+  // First check if the file entry exists in the database, 
+  // this now presumes we don't want to do anything with older versions of the file
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "SELECT type, current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step(stmt);
   if (res != SQLITE_ROW) {
-	  sqlite3_finalize(stmt);
-	  return -ENOENT;
-  }
-  
-  int type = sqlite3_column_int(stmt, 0);
-  int curr_ver = sqlite3_column_int(stmt, 1);
-  if (type != ndnfs::file_type) {
-	  sqlite3_finalize(stmt);
-	  return -EINVAL;
+	sqlite3_finalize(stmt);
+	return -ENOENT;
   }
 
   sqlite3_finalize(stmt);
-
-  //int size_read = read_version(path, curr_ver, buf, size, offset, fi);
-
-  sqlite3_prepare_v2(db, "UPDATE file_system SET atime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int(stmt, 1, (int)time(0));
-  sqlite3_bind_text(stmt, 2, path, -1, SQLITE_STATIC);
-  sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
   
+  // Then write read from the actual file
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   
@@ -265,8 +200,9 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   cout << "ndnfs_write: path=" << path << std::dec << ", size=" << size << ", offset=" << offset << endl;
 #endif
   
+  // First check if the entry exists in the database
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
   if (res != SQLITE_ROW) {
@@ -274,31 +210,9 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
 	return -ENOENT;
   }
   
-  int type = sqlite3_column_int (stmt, 0);
-  int curr_ver = sqlite3_column_int (stmt, 1);
-  int temp_ver = sqlite3_column_int (stmt, 2);
   sqlite3_finalize (stmt);
   
-  if (type != ndnfs::file_type)
-    return -EINVAL;
-
-  // Write data to a new version of the file
-  int ver_size = write_version (path, temp_ver, buf, size, offset, fi);
-  
-  if (ver_size < 0)
-    return -EINVAL;
-
-  sqlite3_prepare_v2 (db, "UPDATE file_system SET size = ?, mtime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int (stmt, 1, ver_size);
-  sqlite3_bind_int (stmt, 2, (int) time (0));
-  sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
-  res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-
-  if (res != SQLITE_OK && res != SQLITE_DONE)
-    return -EACCES;
-  
-      
+  // Then write the actual file
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   int fd = open(fullPath, O_RDWR);
@@ -321,7 +235,18 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
 
 int ndnfs_truncate (const char *path, off_t length)
 {
-  // actual file truncation
+  // First we check if the entry exists in database
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
+  int res = sqlite3_step (stmt);
+  if (res != SQLITE_ROW) {
+	sqlite3_finalize (stmt);
+	return -ENOENT;
+  } 
+  sqlite3_finalize (stmt);
+    
+  // Then we truncate the actual file
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   
@@ -331,35 +256,7 @@ int ndnfs_truncate (const char *path, off_t length)
     return -errno;
   }
   
-  // sqlite operations for file truncation
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-  int res = sqlite3_step (stmt);
-  if (res != SQLITE_ROW) {
-	sqlite3_finalize (stmt);
-	return -ENOENT;
-  }
-    
-  int type = sqlite3_column_int (stmt, 0);
-  int curr_ver = sqlite3_column_int (stmt, 1);
-  int temp_ver = sqlite3_column_int (stmt, 2);
-  sqlite3_finalize (stmt);
-    
-  if (type != ndnfs::file_type)
-    return -EINVAL;
-
-  // TODO: fix truncate_version
-  int ret = truncate_version (path, temp_ver, length);
-
-  sqlite3_prepare_v2 (db, "UPDATE file_system SET size = ?, mtime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int (stmt, 1, (int)length);
-  sqlite3_bind_int (stmt, 2, (int)time(0));
-  sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
-  sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-  
-  return ret;
+  return res;
 }
 
 
@@ -383,13 +280,6 @@ int ndnfs_unlink(const char *path)
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   
-  // Finally, update parent directory mtime
-  sqlite3_prepare_v2(db, "UPDATE file_system SET mtime = ? WHERE path = ?;", -1, &stmt, 0);
-  sqlite3_bind_int(stmt, 1, (int)time(0));
-  sqlite3_bind_text(stmt, 2, dir_path.c_str(), -1, SQLITE_STATIC);
-  sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
-  
   char fullPath[PATH_MAX];
   abs_path(fullPath, path);
   int ret = unlink(fullPath);
@@ -408,8 +298,9 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
   cout << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
 #endif
 
+  // First we check if the file exists
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT type, current_version, temp_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
   if (res != SQLITE_ROW) {
@@ -417,60 +308,44 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	return -ENOENT;
   }
   
-  int type = sqlite3_column_int (stmt, 0);
-  int curr_ver = sqlite3_column_int (stmt, 1);
-  int temp_ver = sqlite3_column_int (stmt, 2);
-  if (type != ndnfs::file_type) {
-	sqlite3_finalize (stmt);
-	return -EINVAL;
-  }
-
   sqlite3_finalize (stmt);
 
-  /*
-    In FUSE design, if the file is created with create() call,
-    the corresponding release() call always has fi->flags = 0.
-    So we need to check the current version number to tell if
-    the file is just created or opened in read only mode.
-  */
-
-  // Check open flags
-  if (((fi->flags & O_ACCMODE) != O_RDONLY) || curr_ver == -1) {
-    if (temp_ver == -1) {
-      return -EINVAL;
-    }
+  if ((fi->flags & O_ACCMODE) != O_RDONLY) {
 	
-	sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
+	sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ?;", -1, &stmt, 0);
 	sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-	sqlite3_bind_int (stmt, 2, temp_ver);
 	int res = sqlite3_step (stmt);
-
+    sqlite3_finalize (stmt);
+	
 	if (res != SQLITE_ROW) {
-	  // Should not happen
 	  sqlite3_finalize (stmt);
 	  return -1;
 	} else {
-	  // Update version number and remove old version
-	  int size = sqlite3_column_int (stmt, 2);
-
-	  sqlite3_finalize (stmt);
-	  sqlite3_prepare_v2 (db, "UPDATE file_system SET size = ?, current_version = ?, temp_version = ? WHERE path = ?;", -1, &stmt, 0);
-	  sqlite3_bind_int (stmt, 1, size);
-	  sqlite3_bind_int (stmt, 2, temp_ver);  // set current_version to the original temp_version
-	  sqlite3_bind_int (stmt, 3, -1);  // set temp_version to -1
-	  sqlite3_bind_text (stmt, 4, path, -1, SQLITE_STATIC);
+	  int curr_version = time(0);
+	  sqlite3_prepare_v2 (db, "UPDATE file_system SET current_version = ? WHERE path = ?;", -1, &stmt, 0);
+	  sqlite3_bind_int (stmt, 1, curr_version);  // set current_version to the current timestamp
+	  sqlite3_bind_text (stmt, 2, path, -1, SQLITE_STATIC);
 	  sqlite3_step (stmt);
-      
+      sqlite3_finalize (stmt);
+	  
+	  sqlite3_prepare_v2 (db, "INSERT INTO file_versions (path, version) VALUES (?,?);", -1, &stmt, 0);
+	  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
+	  sqlite3_bind_int (stmt, 2, curr_version);
+	  int res = sqlite3_step (stmt);
+	  sqlite3_finalize (stmt);
+	  if (res != SQLITE_OK && res != SQLITE_DONE)
+		return -1;
+	  
       // TODO: since older version is removed anyway, it makes sense to rely on system 
       // function calls for multiple file accesses. Simplification of versioning method?
-	  if (curr_ver != -1)
-	    remove_version (path, curr_ver);
+	  //if (curr_ver != -1)
+	  //  remove_version (path, curr_ver);
 	}
-    sqlite3_finalize (stmt);
-  }
+	
+	// After releasing, start a new signing thread for the file; 
+    // If a signing thread for the file in question has already started, kill that thread.
   
-  // After releasing, start a new signing thread for the file; 
-  // If a signing thread for the file in question has already started, kill that thread.
+  }
   
   return 0;
 }

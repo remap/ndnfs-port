@@ -309,14 +309,7 @@ int main(int argc, char **argv)
 CREATE TABLE IF NOT EXISTS                        \n\
   file_system(                                    \n\
     path                 TEXT NOT NULL,           \n\
-    parent               TEXT NOT NULL,           \n\
-    type                 INTEGER,                 \n\
-    mode                 INTEGER,                 \n\
-    atime                INTEGER,                 \n\
-    mtime                INTEGER,                 \n\
-    size                 INTEGER,                 \n\
     current_version      INTEGER,                 \n\
-    temp_version         INTEGER,                 \n\
     mime_type            TEXT,                    \n\
     ready_signed         INTEGER,                 \n\
     PRIMARY KEY (path)                            \n\
@@ -326,21 +319,26 @@ CREATE INDEX id_parent ON file_system (parent);   \n\
 ";
 
   sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
-
+  
+  // In our new implementation, we store the latest version of the file, and version history in database,
+  // and when opening with write permission, nothing is copied, and there's no notion of a temp_version while writing.
+  //
+  // TODO: figure out how multiple write access is handled by system calls.
   const char* INIT_VER_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                   \n\
   file_versions(                                             \n\
     path          TEXT NOT NULL,                             \n\
     version       INTEGER,                                   \n\
     size          INTEGER,                                   \n\
-    totalSegments INTEGER,                                   \n\
     PRIMARY KEY (path, version)                              \n\
   );                                                         \n\
 CREATE INDEX id_ver ON file_versions (path, version);        \n\
 ";
 
   sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
-
+  
+  // Segment table still stores the version, and does not assume that the signature
+  // always belong to the latest version.
   const char* INIT_SEG_TABLE = "\
 CREATE TABLE IF NOT EXISTS                                        \n\
   file_segments(                                                  \n\
@@ -356,34 +354,13 @@ CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
 
   sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
 
-  cout << "main: ok" << endl;
+  cout << "main: table creation ok" << endl;
 
   cout << "main: initializing file mime_type inference..." << endl;
   initialize_ext_mime_map();
 
   cout << "main: mount root folder..." << endl;
 
-  int now = time(0);
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, 
-					 "INSERT INTO file_system (path, parent, type, mode, atime, mtime, size, current_version, temp_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", 
-					 -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, "/", -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, "", -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 3, ndnfs::dir_type);
-  sqlite3_bind_int(stmt, 4, 0777);
-  sqlite3_bind_int(stmt, 5, now);
-  sqlite3_bind_int(stmt, 6, now);
-  sqlite3_bind_int(stmt, 7, -1);  // size
-  sqlite3_bind_int(stmt, 8, -1);  // current version
-  sqlite3_bind_int(stmt, 9, -1);  // temp version
-  int res = sqlite3_step(stmt);
-  if (res == SQLITE_OK || res == SQLITE_DONE) {
-	cout << "main: OK" << endl;
-  }
-
-  sqlite3_finalize(stmt);
-  
   create_fuse_operations(&ndnfs_fs_ops);
   
   cout << "main: enter FUSE main loop" << endl << endl;

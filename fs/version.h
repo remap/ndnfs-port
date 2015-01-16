@@ -24,8 +24,6 @@
 #include "ndnfs.h"
 #include "segment.h"
 
-int read_version(const char* path, const int ver, char *output, size_t size, off_t offset, struct fuse_file_info *fi);
-
 int duplicate_version (const char *path, const int from_ver, const int to_ver);
 
 int write_version(const char* path, const int ver, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
