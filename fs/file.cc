@@ -161,7 +161,7 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
   // First check if the file entry exists in the database, 
   // this now presumes we don't want to do anything with older versions of the file
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, "SELECT type, current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2(db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step(stmt);
   if (res != SQLITE_ROW) {
