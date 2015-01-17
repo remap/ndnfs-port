@@ -266,16 +266,12 @@ int ndnfs_unlink(const char *path)
   cout << "ndnfs_unlink: path=" << path << endl;
 #endif
 
-  string dir_path, file_name;
-  split_last_component(path, dir_path, file_name);
-
-  // First, remove all the versions under the file entry (both current and temp)
-  // TODO: fix remove_versions
-  remove_versions(path);    
+  // TODO: update remove_versions
+  remove_file_entry(path);
 
   // Then, remove file entry
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE type=1 AND path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);

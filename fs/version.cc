@@ -232,21 +232,11 @@ void remove_version(const char* path, const int ver)
   sqlite3_finalize(stmt);
 }
 
-void remove_versions(const char* path)
+void remove_file_entry(const char* path)
 {
-#ifdef NDNFS_DEBUG
-  cout << "remove_versions: path=" << path << endl;
-#endif
-
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-  int res = sqlite3_step(stmt);
-  if (res == SQLITE_ROW) {
-	int curr_ver = sqlite3_column_int(stmt, 0);
-	if (curr_ver != -1) {
-	  remove_version(path, curr_ver);
-	}
-  }
+  sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 }

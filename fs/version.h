@@ -32,6 +32,11 @@ int truncate_version(const char* path, const int ver, off_t length);
 
 void remove_version(const char* path, const int ver);
 
-void remove_versions(const char* path);
+/**
+ * Remove file entry removes the file entry from file_system table, 
+ * but not from file_versions; Right now, whenever unlink is called, 
+ * entries of the file in file_versions is not deleted.
+ */
+void remove_file_entry(const char* path);
 
 #endif
