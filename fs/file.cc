@@ -345,7 +345,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	int seg = 0;
 	
 	while (size == ndnfs::seg_size) {
-      size = pread(fd, buf, ndnfs::seg_size, 0);
+      size = pread(fd, buf, ndnfs::seg_size, seg << ndnfs::seg_size_shift);
 	  if (size == -1) {
 		cerr << "ndnfs_release: read error. Errno: " << errno << endl;
 		return -errno;	
