@@ -75,4 +75,6 @@ void sendDir(const std::string& path, int mtime, ndn::Transport& transport);
 
 void sendFile(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
 
+void readFileSize(std::string path, int& file_size, int& total_seg);
+
 #endif // __SERVER_MODULE_H__

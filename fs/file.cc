@@ -350,8 +350,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 		cerr << "ndnfs_release: read error. Errno: " << errno << endl;
 		return -errno;	
 	  }
-	  cout << "sign_segment called" << endl;
-      sign_segment (path, curr_version, seg, buf, size);
+	  sign_segment (path, curr_version, seg, buf, size);
       seg ++;
     }
     

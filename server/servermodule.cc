@@ -45,6 +45,18 @@ using namespace ndnfs::server;
 const int BLOCKSIZE = 8192;
 const int SEGSIZESHIFT = 13;
 
+void readFileSize(string path, int& file_size, int& total_seg)
+{
+  char file_path[PATH_MAX] = "";
+  abs_path(file_path, path.c_str());
+  
+  struct stat st;
+  stat(file_path, &st);
+  file_size = st.st_size;
+  total_seg = (file_size >> SEGSIZESHIFT) + 1;
+  return;
+}
+
 void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::shared_ptr<const Interest>& interest, Transport& transport, uint64_t registeredPrefixId) {
   processInterest(interest->getName(), transport);
 }
@@ -174,24 +186,15 @@ void processInterest(const Name& interest_name, Transport& transport) {
 
 	// When assembling the data packet, finalblockid should be put into each segment,
 	// this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
-	
-	sqlite3_stmt *stmt2;
-	sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt2, 0);
-	sqlite3_bind_text(stmt2, 1, path.c_str(), -1, SQLITE_STATIC);
-	sqlite3_bind_int(stmt2, 2, version);
-	if(sqlite3_step(stmt2) != SQLITE_ROW){
-	  sqlite3_finalize(stmt2);
-	  return;
-	}
-	
-	int totalSegmentNumber = sqlite3_column_int(stmt2,3);
-	sqlite3_finalize(stmt2);
-	
-	if (totalSegmentNumber > 0) {
+	int total_seg = 0;
+	int file_size = 0;
+	readFileSize(path, file_size, total_seg);
+  
+	if (total_seg > 0) {
 	  // in the JS plugin, finalBlockId component is parsed with toSegment
 	  // not sure if it's supposed to be like this in other ndn applications,
 	  // if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
-	  Name::Component finalBlockId = Name::Component::fromNumberWithMarker(totalSegmentNumber - 1, 0x00);
+	  Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
 	  data.getMetaInfo().setFinalBlockId(finalBlockId);
 	}
 	
@@ -302,13 +305,9 @@ void processInterest(const Name& interest_name, Transport& transport) {
 }
 
 void sendFile(const string& path, const string& mimeType, int version, Transport& transport) {
-  char file_path[PATH_MAX] = "";
-  abs_path(file_path, path.c_str());
-  
-  struct stat st;
-  stat(file_path, &st);
-  int file_size = st.st_size;
-  int total_seg = (file_size >> SEGSIZESHIFT) + 1;
+  int total_seg = 0;
+  int file_size = 0;
+  readFileSize(path, file_size, total_seg);
   
   ndnfs::FileInfo infof;
   
