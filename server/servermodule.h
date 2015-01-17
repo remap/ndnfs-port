@@ -42,8 +42,6 @@
 
 #include <sqlite3.h>
 
-#define FULL_LEN 100
-
 extern const char *db_name;
 extern sqlite3 *db;
 extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
@@ -82,6 +80,6 @@ void processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 
 void sendDir(const std::string& path, int mtime, ndn::Transport& transport);
 
-void sendFile(const std::string& path, const std::string& mimeType, int version, int sizef, int totalseg, ndn::Transport& transport);
+void sendFile(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
 
 #endif // __SERVER_MODULE_H__
