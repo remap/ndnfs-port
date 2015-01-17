@@ -39,16 +39,9 @@
 #include "dir.pb.h"
 #include "file.pb.h"
 #include "namespace.h"
+#include "server.h"
 
 #include <sqlite3.h>
-
-extern const char *db_name;
-extern sqlite3 *db;
-extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
-extern ndn::Name certificateName;
-
-extern std::string global_prefix;
-extern const char* fs_path;
 
 void onInterest(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, ndn::Transport& transport, uint64_t registeredPrefixId);
 
