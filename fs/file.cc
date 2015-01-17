@@ -27,14 +27,14 @@ using namespace std;
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
 {
   // The actual open operation
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
   int ret = 0;
-  ret = open(fullPath, fi->flags);
+  ret = open(full_path, fi->flags);
   
   if (ret == -1) {
-	cerr << "ndnfs_open: open failed. Full path: " << fullPath << ". Errno: " << -errno << endl;
+	cerr << "ndnfs_open: open failed. Full path: " << full_path << ". Errno: " << -errno << endl;
 	return -errno;
   }
   close(ret);
@@ -126,26 +126,26 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   sqlite3_finalize(stmt);
   
   // Create the actual file
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
   int ret = 0;
   
   // For OS other than Linux, calling open directly does not seem to be enough;
   // On OS X, open is called instead.
   if (S_ISREG(mode)) {
-    ret = open(fullPath, O_CREAT | O_EXCL | O_WRONLY, mode);
+    ret = open(full_path, O_CREAT | O_EXCL | O_WRONLY, mode);
     if (ret >= 0) {
       ret = close(ret);
     }
   } else if (S_ISFIFO(mode)) {
-	ret = mkfifo(fullPath, mode);
+	ret = mkfifo(full_path, mode);
   } else {
-	ret = mknod(fullPath, mode, dev);
+	ret = mknod(full_path, mode, dev);
   }
     
   if (ret == -1) {
-    cerr << "ndnfs_mknod: mknod failed. Full path: " << fullPath << ". Errno " << errno << endl;
+    cerr << "ndnfs_mknod: mknod failed. Full path: " << full_path << ". Errno " << errno << endl;
     return -errno;
   }
   
@@ -172,10 +172,10 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
   sqlite3_finalize(stmt);
   
   // Then write read from the actual file
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
-  int fd = open(fullPath, O_RDONLY);
+  int fd = open(full_path, O_RDONLY);
   
   if (fd == -1) {
     cerr << "ndnfs_read: open error. Errno: " << errno << endl;
@@ -213,9 +213,9 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   sqlite3_finalize (stmt);
   
   // Then write the actual file
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
-  int fd = open(fullPath, O_RDWR);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  int fd = open(full_path, O_RDWR);
   if (fd == -1) {
     cerr << "ndnfs_write: open error. Errno: " << errno << endl;
     return -errno;
@@ -247,12 +247,12 @@ int ndnfs_truncate (const char *path, off_t length)
   sqlite3_finalize (stmt);
     
   // Then we truncate the actual file
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
-  int trunc_ret = truncate(fullPath, length);
+  int trunc_ret = truncate(full_path, length);
   if (trunc_ret == -1) {
-    cerr << "ndnfs_truncate: error. Full path " << fullPath << ". Errno " << errno << endl;
+    cerr << "ndnfs_truncate: error. Full path " << full_path << ". Errno " << errno << endl;
     return -errno;
   }
   
@@ -276,9 +276,9 @@ int ndnfs_unlink(const char *path)
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
   
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
-  int ret = unlink(fullPath);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  int ret = unlink(full_path);
   
   if (ret == -1) {
     cerr << "ndnfs_unlink: unlink failed. Errno: " << errno << endl;
@@ -293,6 +293,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 #ifdef NDNFS_DEBUG
   cout << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
 #endif
+  int curr_version = time(0);
 
   // First we check if the file exists
   sqlite3_stmt *stmt;
@@ -303,44 +304,58 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 	sqlite3_finalize (stmt);
 	return -ENOENT;
   }
-  
   sqlite3_finalize (stmt);
-
+  	  
   if ((fi->flags & O_ACCMODE) != O_RDONLY) {
-	
-	sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ?;", -1, &stmt, 0);
-	sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-	int res = sqlite3_step (stmt);
-    sqlite3_finalize (stmt);
-	
-	if (res != SQLITE_ROW) {
-	  sqlite3_finalize (stmt);
-	  return -1;
-	} else {
-	  int curr_version = time(0);
-	  sqlite3_prepare_v2 (db, "UPDATE file_system SET current_version = ? WHERE path = ?;", -1, &stmt, 0);
-	  sqlite3_bind_int (stmt, 1, curr_version);  // set current_version to the current timestamp
-	  sqlite3_bind_text (stmt, 2, path, -1, SQLITE_STATIC);
-	  sqlite3_step (stmt);
-      sqlite3_finalize (stmt);
-	  
-	  sqlite3_prepare_v2 (db, "INSERT INTO file_versions (path, version) VALUES (?,?);", -1, &stmt, 0);
-	  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-	  sqlite3_bind_int (stmt, 2, curr_version);
-	  int res = sqlite3_step (stmt);
-	  sqlite3_finalize (stmt);
-	  if (res != SQLITE_OK && res != SQLITE_DONE)
-		return -1;
-	  
-      // TODO: since older version is removed anyway, it makes sense to rely on system 
-      // function calls for multiple file accesses. Simplification of versioning method?
-	  //if (curr_ver != -1)
-	  //  remove_version (path, curr_ver);
+    sqlite3_prepare_v2 (db, "UPDATE file_system SET current_version = ? WHERE path = ?;", -1, &stmt, 0);
+	sqlite3_bind_int (stmt, 1, curr_version);  // set current_version to the current timestamp
+	sqlite3_bind_text (stmt, 2, path, -1, SQLITE_STATIC);
+	res = sqlite3_step (stmt);
+	if (res != SQLITE_OK && res != SQLITE_DONE) {
+	  cerr << "ndnfs_release: update file_system error. " << res << endl;
+	  return res;
 	}
+	sqlite3_finalize (stmt);
+	
+	sqlite3_prepare_v2 (db, "INSERT INTO file_versions (path, version) VALUES (?,?);", -1, &stmt, 0);
+	sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
+	sqlite3_bind_int (stmt, 2, curr_version);
+	sqlite3_step (stmt);
+	sqlite3_finalize (stmt);
+	
+	// TODO: since older version is removed anyway, it makes sense to rely on system 
+	// function calls for multiple file accesses. Simplification of versioning method?
+	//if (curr_ver != -1)
+	//  remove_version (path, curr_ver);
 	
 	// After releasing, start a new signing thread for the file; 
     // If a signing thread for the file in question has already started, kill that thread.
+	char full_path[PATH_MAX];
+	abs_path(full_path, path);
   
+	int fd = open(full_path, O_RDONLY);
+    
+	if (fd == -1) {
+	  cerr << "ndnfs_release: open error. Errno: " << errno << endl;
+	  return -errno;
+	}
+	
+	char buf[ndnfs::seg_size];
+	int size = ndnfs::seg_size;
+	int seg = 0;
+	
+	while (size == ndnfs::seg_size) {
+      size = pread(fd, buf, ndnfs::seg_size, 0);
+	  if (size == -1) {
+		cerr << "ndnfs_release: read error. Errno: " << errno << endl;
+		return -errno;	
+	  }
+	  cout << "sign_segment called" << endl;
+      sign_segment (path, curr_version, seg, buf, size);
+      seg ++;
+    }
+    
+	close(fd);
   }
   
   return 0;
@@ -349,10 +364,10 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
 int ndnfs_statfs(const char *path, struct statvfs *si)
 {
   //cout << "ndnfs_statfs: stat called." << endl;
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
-  int ret = statvfs(fullPath, si);
+  int ret = statvfs(full_path, si);
 
   if (ret == -1) {
     cerr << "ndnfs_statfs: stat failed. Errno " << errno << endl;
@@ -365,10 +380,10 @@ int ndnfs_statfs(const char *path, struct statvfs *si)
 int ndnfs_access(const char *path, int mask)
 {
   //cout << "ndnfs_access: access called." << endl;
-  char fullPath[PATH_MAX];
-  abs_path(fullPath, path);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
   
-  int ret = access(fullPath, mask);
+  int ret = access(full_path, mask);
 
   if (ret == -1) {
     cerr << "ndnfs_access: access failed. Errno " << errno << endl;

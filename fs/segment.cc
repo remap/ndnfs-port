@@ -35,10 +35,10 @@ using namespace ndn;
  * version parameter is not used right now, as duplicate_version is now a stub, 
  * and write does not create/write to a new file by the name of the version.
  */
-int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi)
+int sign_segment(const char* path, int ver, int seg, const char *data, int len)
 {
 #ifdef NDNFS_DEBUG
-  cout << "write_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
+  cout << "sign_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
 #endif
 
   string file_path(path);
@@ -51,7 +51,8 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   // The "/" was escaped, so unescape.
   while(1) {
 	size_t found = escapedString.find("%2F");
-	if (found == string::npos) break;
+	if (found == string::npos) 
+	  break;
 	escapedString.replace(found, 3, "/");
   }
   Name seg_name(escapedString);
@@ -59,7 +60,7 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   seg_name.appendVersion(ver);
   seg_name.appendSegment(seg);
 #ifdef NDNFS_DEBUG
-  cout << "write_segment: segment name is " << seg_name.toUri() << endl;
+  cout << "sign_segment: segment name is " << seg_name.toUri() << endl;
 #endif
 
   Data data0;
@@ -74,12 +75,12 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   int sig_size = strlen(sig_raw);
 
 #ifdef NDNFS_DEBUG
-  cout << "write_segment: raw signature is" << endl;
+  cout << "sign_segment: raw signature is" << endl;
   for (int i = 0; i < sig_size; i++) {
 	printf("%02x", (unsigned char)sig_raw[i]);
   }
   cout << endl;
-  cout << "write_segment: raw signature length is " << sig_size << endl;
+  cout << "sign_segment: raw signature length is " << sig_size << endl;
 #endif
 
   sqlite3_stmt *stmt;
@@ -87,10 +88,9 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
   sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
   sqlite3_bind_int(stmt,2,ver);
   sqlite3_bind_int(stmt,3,seg);
-  
   sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-  
   sqlite3_bind_int(stmt,5,segment_to_size(seg));
+  
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
 
@@ -100,9 +100,9 @@ int write_segment(const char* path, const int ver, const int seg, const char *da
 void remove_segments(const char* path, const int ver, const int start/* = 0 */)
 {
 #ifdef NDNFS_DEBUG
-    cout << "remove_segments: path=" << path << std::dec << ", ver=" << ver << ", starting from segment #" << start << endl;
+  cout << "remove_segments: path=" << path << std::dec << ", ver=" << ver << ", starting from segment #" << start << endl;
 #endif
-
+  /*
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2(db, "SELECT totalSegments FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
     sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
@@ -123,6 +123,7 @@ void remove_segments(const char* path, const int ver, const int start/* = 0 */)
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
+  */
 }
 
 // truncate is not tested in current implementation
@@ -153,14 +154,14 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
 	  abs_path(fullPath, path);
 	  int fd = open(fullPath, O_RDONLY);
 	  if (fd == -1) {
-		cerr << "write_segment: open error. Errno: " << errno << endl;
+		cerr << "truncate_segment: open error. Errno: " << errno << endl;
 		return;
 	  }
       
       char *data = new char[ndnfs::seg_size];
 	  int read_len = pread(fd, data, length, segment_to_size(seg));
 	  if (read_len < 0) {
-		cerr << "write_segment: write error. Errno: " << errno << endl;
+		cerr << "truncate_segment: write error. Errno: " << errno << endl;
 		return;
 	  }
   
@@ -197,7 +198,6 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
 	  sqlite3_bind_int(stmt,2,ver);
 	  sqlite3_bind_int(stmt,3,seg);
 	  sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-  
 	  sqlite3_bind_int(stmt,5,segment_to_size(seg));
 	  sqlite3_step(stmt);
 	  sqlite3_finalize(stmt);

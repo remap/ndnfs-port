@@ -33,9 +33,7 @@ inline int segment_to_size(int seg)
     return (seg << ndnfs::seg_size_shift);
 }
 
-int read_segment(const char* path, const int ver, const int seg, char *output, const int limit, const int offset, struct fuse_file_info *fi);
-
-int write_segment(const char* path, const int ver, const int seg, const char *data, const int len, struct fuse_file_info *fi);
+int sign_segment(const char* path, int ver, int seg, const char *data, int len);
 
 void remove_segments(const char* path, const int ver, const int start = 0);
 

@@ -62,108 +62,11 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
   return 0;
 }
 
-// Write data to the specified version and return the new file size for that version
-int write_version (const char* path, const int ver, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+// write_version's function will be redefined
+int write_version(const char* path, int ver, const char *buf, size_t size, off_t offset)
 {
-#ifdef NDNFS_DEBUG
-  cout << "write_version: path=" << path << std::dec << ", ver=" << ver << ", size=" << size << ", offset=" << offset << endl;
-#endif
-  
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int (stmt, 2, ver);
-  
-  if (sqlite3_step (stmt) != SQLITE_ROW) {
-	sqlite3_finalize (stmt);
-	return -1;
-  }
-
-  int old_ver_size = sqlite3_column_int (stmt, 2);
-  int old_total_seg = sqlite3_column_int (stmt, 3);
-  const char *buf_pos = buf;
-  size_t size_left = size;
-  int seg = seek_segment (offset);
-  int tail = offset - segment_to_size (seg);
-  
-  if (tail > 0) {
-    // Special handling for the boundary segment: resign this entire segment
-	int copy_len = ndnfs::seg_size - tail;  // This is what we can copy at most in this segment
-	bool final = false;
-	if (copy_len > size) {
-	  // The data we want to write may not fill out the rest of the segment
-	  copy_len = size;
-	  final = true;
-	}
-
-	char *new_data = new char[ndnfs::seg_size];
-	if (new_data == NULL) {
-	  sqlite3_finalize (stmt);
-	  return -1;
-	}
-	
-	char *old_data = new char[ndnfs::seg_size];
-	
-	cout << "Segment to size as offset " << segment_to_size(seg) << endl;
-	cout << O_WRONLY << " " << O_RDONLY << " " << O_RDWR << endl;
-	
-	int read_len = pread(fi->fh, old_data, ndnfs::seg_size, segment_to_size(seg));
-	
-	if (read_len == -1) {
-	  cerr << "write_version: Write with boundary segment, read from " << path << " failed." << endl;
-	  sqlite3_finalize (stmt);
-	  return -1;
-	}
-
-	memcpy (new_data, old_data, read_len);  // Copy everything from old data
-	memcpy (new_data + tail, buf, copy_len);  // Overwrite the part we want to write to
-
-	// The final size of this segment content is the maximum of the old size and the new size
-	int updated_seg_len = tail + copy_len;
-	updated_seg_len = read_len > updated_seg_len ? read_len : updated_seg_len;
-	write_segment (path, ver, seg++, new_data, updated_seg_len, fi);
-	
-	delete new_data;
-	delete old_data;
-	  
-	if (final) {
-	  goto out;
-	}	
-	// Else, move pointer forward
-	buf_pos += copy_len;
-	size_left -= copy_len;
-  }
-    
-  while (size_left > 0) {
-	int copy_len = ndnfs::seg_size;
-	if (copy_len > size_left)
-	  copy_len = size_left;
-
-	write_segment (path, ver, seg++, buf_pos, copy_len, fi);
-	buf_pos += copy_len;
-	size_left -= copy_len;
-  }
-  
-out:
-  int total_seg = seg > old_total_seg ? seg : old_total_seg;
-  
-  int ver_size = (int) (offset + size);
-  // The new total size should be the maximum of old size and (size + offset)
-  ver_size = ver_size > old_ver_size ? ver_size : old_ver_size;
-  
-  // Update temp version entry
-  sqlite3_finalize (stmt);
-  sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? AND version = ?;", -1, &stmt, 0);
-  sqlite3_bind_int (stmt, 1, ver_size);
-  sqlite3_bind_int (stmt, 2, total_seg);
-  sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int (stmt, 4, ver);
-  int res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-  if (res != SQLITE_OK && res != SQLITE_DONE)
-    return -1;
-  
-  return ver_size;
+  cerr << "write_version need to be reimplemented." << endl;
+  return 0;
 }
 
 int truncate_version(const char* path, const int ver, off_t length)
