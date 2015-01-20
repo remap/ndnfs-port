@@ -56,7 +56,7 @@ def configure(conf):
 
     conf.check(features='cxx cxxprogram', lib=['ndn-cpp'], libpath=['/usr/local/lib'], cflags=['-Wall'], uselib_store='NDNCPP', mandatory=True)
     conf.env.append_value('INCLUDES', ['/usr/local/include'])
-
+    
     if conf.options._test:
         conf.define ('_TESTS', 1)
         conf.env.TEST = 1
@@ -78,28 +78,28 @@ def build (bld):
         target = "ndnfs-server",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob (['server/*.cc', 'server/*.proto']),
-        use = 'NDNCPP SQLITE3',
+        use = 'NDNCPP SQLITE3 PROTOBUF',
         includes = 'server'
         )
     bld (
         target = "test-client",
         features = ["cxx", "cxxprogram"],
         source = 'test/client.cc test/handler.cc server/dir.proto server/file.proto',
-        use = 'NDNCPP',
+        use = 'NDNCPP PROTOBUF',
         includes = 'server'
         )
     bld (
         target = "cat-file",
         features = ["cxx", "cxxprogram"],
         source = 'test/cat_file.cc server/dir.proto server/file.proto',
-        use = 'BOOST NDNCPP',
+        use = 'BOOST NDNCPP PROTOBUF',
         includes = 'server'
         )
     bld (
         target = "cat-file-pipe",
         features = ["cxx", "cxxprogram"],
         source = 'test/cat_file_pipe.cc server/dir.proto server/file.proto',
-        use = 'BOOST NDNCPP',
+        use = 'BOOST NDNCPP PROTOBUF',
         includes = 'server'
         )
 
