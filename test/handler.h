@@ -1,6 +1,8 @@
 #ifndef HANDLER_H
 #define HANDLER_H
 
+#include <unistd.h>
+
 #include <ndn-cpp/common.hpp>
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/interest.hpp>

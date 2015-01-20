@@ -1,6 +1,8 @@
 #ifndef CONSOLE_HANDLING_H
 #define CONSOLE_HANDLING_H
 
+#include <unistd.h>
+
 #include <poll.h>
 #include <sstream>
 #include <vector>

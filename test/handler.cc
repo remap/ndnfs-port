@@ -11,6 +11,14 @@
 using namespace ndn;
 using namespace std;
 
+// Adaptation for ndn-cpp build with std functions and shared pointers
+using namespace ndn::func_lib;
+#if NDN_CPP_HAVE_STD_FUNCTION && NDN_CPP_WITH_STD_FUNCTION
+#include <functional>
+// In the std library, the placeholders are in a different namespace than boost.
+using namespace func_lib::placeholders;
+#endif
+
 Handler::Handler(Face &face, KeyChain &keyChain, string nameStr, string fileName, bool fetchFile, bool doVerification) :
   face_(face), keyChain_(keyChain), nameStr_(nameStr), 
   fileName_(fileName), fetchFile_(fetchFile), doVerification_(doVerification),
