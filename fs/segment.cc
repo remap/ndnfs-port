@@ -19,6 +19,7 @@
  */
 
 #include "segment.h"
+
 #include <ndn-cpp/data.hpp>
 #include <ndn-cpp/common.hpp>
 #include <ndn-cpp/security/security-exception.hpp>
@@ -72,7 +73,7 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
   Blob signature = data0.getSignature()->getSignature();
   
   const char* sig_raw = (const char*)signature.buf();
-  int sig_size = strlen(sig_raw);
+  int sig_size = signature.size();
 
 #ifdef NDNFS_DEBUG
   cout << "sign_segment: raw signature is" << endl;
@@ -190,7 +191,7 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
 	  Blob signature = trunc_data.getSignature()->getSignature();
   
 	  const char* sig_raw = (const char*)signature.buf();
-	  int sig_size = strlen(sig_raw);
+	  int sig_size = signature.size();
 	  
 	  sqlite3_finalize(stmt);	
 	  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);

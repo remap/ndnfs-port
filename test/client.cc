@@ -164,26 +164,6 @@ void usage() {
 }
 
 int main (int argc, char **argv) {
-  
-  // test for opening the same file two times without closing in the same thread.
-  /*
-  int fd0 = open("/tmp/file", O_RDWR);
-  int fd1 = open("/tmp/file", O_RDWR);
-  
-  if (fd1 < 0) {
-    cout << "Open failed for the second time." << endl;
-  }
-  
-  const char * writeData = "concede\n";
-  int size0 = pwrite(fd0, writeData, strlen(writeData), 0);
-  cout << "write for one, length " << size0 << endl;
-  int size1 = pwrite(fd1, writeData, strlen(writeData), size0);
-  cout << "write for two, length " << size1 << endl;
-  
-  close(fd0);
-  close(fd1);
-  */
-  
   int opt;
   while ((opt = getopt(argc, argv, "h:")) != -1) {
 	switch (opt) {

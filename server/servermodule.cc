@@ -34,7 +34,10 @@
 #include <ndn-cpp/security/key-chain.hpp>
 #include <ndn-cpp/common.hpp>
 
+#include <ndn-cpp/digest-sha256-signature.hpp>
+#include <ndn-cpp/sha256-with-ecdsa-signature.hpp>
 #include <ndn-cpp/sha256-with-rsa-signature.hpp>
+
 #include <sys/stat.h>
 
 using namespace std;
@@ -165,7 +168,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	sqlite3_bind_int(stmt, 2, version);
 	sqlite3_bind_int(stmt, 3, seg);
 	if(sqlite3_step(stmt) != SQLITE_ROW){
-	  cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
+	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
 	  sqlite3_finalize(stmt);
 	  return;
 	}
@@ -225,7 +228,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	Blob encodedData = data.wireEncode();
 	transport.send(*encodedData);
 #ifdef NDNFS_DEBUG
-	cout << "processName(): content object returned and interest consumed" << endl;
+	cout << "processInterest(): content object returned and interest consumed" << endl;
 #endif
   }
   // The client is asking for a certain version of a file
@@ -236,7 +239,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	sqlite3_bind_int(stmt, 2, version);
 	if (sqlite3_step(stmt) != SQLITE_ROW){
 #ifdef NDNFS_DEBUG
-	  cout << "processName(): no such file/version found in ndnfs: " << path << endl;
+	  cout << "processInterest(): no such file/version found in ndnfs: " << path << endl;
 #endif
 	  sqlite3_finalize(stmt);
 	  return;
@@ -252,7 +255,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	sqlite3_prepare_v2(db, "SELECT current_version, mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
 	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
+	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
 	  sqlite3_finalize(stmt);
 	  return;
 	}
@@ -270,7 +273,7 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_ROW) {
 #ifdef NDNFS_DEBUG
-	  cout << "processName(): no such file/directory found in ndnfs: " << path << endl;
+	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
 #endif
 	  sqlite3_finalize(stmt);
 	  return;
