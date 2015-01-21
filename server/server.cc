@@ -33,6 +33,9 @@ string ndnfs::server::db_name = "/tmp/ndnfs.db";
 string ndnfs::server::fs_path = "/tmp/ndnfs";
 string ndnfs::server::fs_prefix = "/ndn/broadcast/ndnfs";
 
+const int ndnfs::server::dir_type = 0;
+const int ndnfs::server::file_type = 1;
+
 sqlite3 *ndnfs::server::db;
 ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::server::keyChain;
 ndn::Name ndnfs::server::certificateName;

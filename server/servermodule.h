@@ -71,7 +71,7 @@ int parseName(const ndn::Name& name, int &version, int &seg, std::string &path);
 
 void processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 
-void sendDir(const std::string& path, int mtime, ndn::Transport& transport);
+void sendDir(std::string path, ndn::Transport& transport);
 
 void sendFile(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
 

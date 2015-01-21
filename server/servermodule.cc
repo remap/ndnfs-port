@@ -24,9 +24,9 @@
 #include <cstdio>
 #include <iostream>
 #include <sstream>
-#include <string>
 #include <vector>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include "servermodule.h"
 #include <ndn-cpp/face.hpp>
@@ -48,6 +48,12 @@ using namespace ndnfs::server;
 const int BLOCKSIZE = 8192;
 const int SEGSIZESHIFT = 13;
 
+/**
+ * readFileSize reads a file from path, and extracts its size and number of segments.
+ * @param path String path to the file
+ * @param file_size Overwritten with number of bytes of the file
+ * @param total_seg Overwritten with number of segments of the file
+ */
 void readFileSize(string path, int& file_size, int& total_seg)
 {
   char file_path[PATH_MAX] = "";
@@ -255,16 +261,31 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	sqlite3_prepare_v2(db, "SELECT current_version, mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
 	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
+	  cout << "processInterest(): no such file found in ndnfs: " << path << endl;
 	  sqlite3_finalize(stmt);
-	  return;
+	  
+	  // It may not be a file, but a folder instead, which is not stored in database
+	  DIR *dp;
+	  char folder_path[PATH_MAX] = "";
+	  abs_path(folder_path, path.c_str());
+	
+	  dp = opendir(folder_path);
+	
+	  if (dp != NULL) {
+	    closedir(dp);
+	    sendDir(path, transport);
+	  } else {
+	    cout << "processInterest(): no such folder found in ndnfs: " << path << endl;
+	  }
 	}
+	else {
+	  int ver = sqlite3_column_int(stmt, 0);
+	  string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
 	
-	int ver = sqlite3_column_int(stmt, 0);
-	string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
-	
-	sqlite3_finalize(stmt);		
-	sendFile(path, mimeType, ver, transport);
+	  sqlite3_finalize(stmt);
+	  sendFile(path, mimeType, ver, transport);
+    }
+    return;
   }
   // The client is asking for the meta_info of a file
   else if (ret == 4) {
@@ -346,20 +367,63 @@ void sendFile(const string& path, const string& mimeType, int version, Transport
   return;
 }
 
-void sendDir(const string& path, int mtime, Transport& transport) {
-  const char *wireData = "Send folder attr is a stub";
+void sendDir(string path, Transport& transport) {
+  char dir_path[PATH_MAX] = "";
+  abs_path(dir_path, path.c_str());
+	
+  DIR *dp = opendir(dir_path);
+  if (dp == NULL)
+	return;
+  
+  int count = 0;
+  ndnfs::DirInfoArray infoa;
+  struct dirent *de;
+  
+  struct stat st;
+  lstat(dir_path, &st);
+  int mtime = st.st_mtime;
+  
+  while ((de = readdir(dp)) != NULL) {
+	ndnfs::DirInfo *infod = infoa.add_di();
+	
+	lstat(de->d_name, &st);
+	if(S_ISDIR(st.st_mode)) {
+	  infod->set_type(dir_type);
+	} else {
+	  infod->set_type(file_type);
+	}
+    infod->set_path(de->d_name);
+    count ++;
+  }
+  closedir(dp);
   
   Name name(fs_prefix);
   name.append(Name(path));
-  
+
   Blob ndnfsDirComponent = Name::fromEscapedString(NdnfsNamespace::dirComponentName_);
   name.append(ndnfsDirComponent).appendVersion(mtime);
+
   Data data0;
   data0.setName(name);
-  data0.setContent((uint8_t*)wireData, strlen(wireData));
+  char *wireData;
+  int dataSize = 0;
   
+  if (count > 0) {
+    dataSize = infoa.ByteSize();
+	wireData = new char[dataSize];
+	infoa.SerializeToArray(wireData, dataSize);
+  }
+  else {
+    dataSize = strlen("Empty folder.\n") + 1;
+    wireData = new char[dataSize];
+    strcpy(wireData, "Empty folder.\n");
+  }
+  
+  data0.setContent((uint8_t*)wireData, dataSize);
   keyChain->sign(data0, certificateName);
   transport.send(*data0.wireEncode());
+  
+  delete wireData;
   
   return;
 }

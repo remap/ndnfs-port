@@ -75,6 +75,9 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
 
 /**
  * Create function is replaced with mknod
+ * TODO:
+ * In Linux(Ubuntu), current implementation reports "utimens: no such file" when executing touch; digging out why.
+ * For the newly created file, getattr is called before mknod/open(O_CREAT); wonder how that works.
  */
 int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 {
