@@ -45,4 +45,6 @@ int ndnfs_statfs(const char *path, struct statvfs *si);
 
 int ndnfs_access(const char *path, int mask);
 
+int ndnfs_utimens(const char *path, const struct timespec ts[2]);
+
 #endif

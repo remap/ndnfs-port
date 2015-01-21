@@ -27,6 +27,7 @@ int ndnfs_getattr(const char *path, struct stat *stbuf)
 #ifdef NDNFS_DEBUG
     cout << "ndnfs_getattr: path=" << path << endl;
 #endif
+
     char fullPath[PATH_MAX];
 	abs_path(fullPath, path);
     

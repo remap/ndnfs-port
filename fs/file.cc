@@ -131,8 +131,6 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   
   int ret = 0;
   
-  // For OS other than Linux, calling open directly does not seem to be enough;
-  // On OS X, open is called instead.
   if (S_ISREG(mode)) {
     ret = open(full_path, O_CREAT | O_EXCL | O_WRONLY, mode);
     if (ret >= 0) {
@@ -143,7 +141,7 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   } else {
     ret = mknod(full_path, mode, dev);
   }
-    
+  
   if (ret == -1) {
     cerr << "ndnfs_mknod: mknod failed. Full path: " << full_path << ". Errno " << errno << endl;
     return -errno;
@@ -357,6 +355,23 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
     close(fd);
   }
   
+  return 0;
+}
+
+int ndnfs_utimens(const char *path, const struct timespec ts[2])
+{        
+  int res;
+  struct timeval tv[2];
+
+  tv[0].tv_sec = ts[0].tv_sec;
+  tv[0].tv_usec = ts[0].tv_nsec / 1000;
+  tv[1].tv_sec = ts[1].tv_sec;
+  tv[1].tv_usec = ts[1].tv_nsec / 1000;
+
+  res = utimes(path, tv);
+  if (res == -1)
+    return -errno;
+
   return 0;
 }
 

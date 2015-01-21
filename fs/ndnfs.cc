@@ -181,6 +181,7 @@ static void create_fuse_operations(struct fuse_operations *fuse_op)
   fuse_op->rmdir    = ndnfs_rmdir;
   fuse_op->statfs   = ndnfs_statfs;
   fuse_op->access   = ndnfs_access;
+  fuse_op->utimens  = ndnfs_utimens;
 }
 
 static struct fuse_operations ndnfs_fs_ops;
