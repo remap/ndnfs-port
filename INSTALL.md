@@ -34,10 +34,15 @@ Install NDN-CPP as follows (boost is optional for ndn-cpp, but right now we only
 
 ### Build
 
-* Mac OS X 10.8.4, Mac OS X 10.9.5
-Change directory to the NDNFS root.  Enter:
+Please make sure that PKG\_CONFIG\_PATH includes the folder containing libndn-cxx.pc, protobuf.pc and osxfuse.pc/fuse.pc;
+(And for some systems, default LD\_LIBRARY\_PATH may not include the default library installation path of protobuf (should be fixed in future wscripts)).
+For example, do:
 <pre>
     $ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig 
+    $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+</pre>
+And then, do:
+<pre>
     $ ./waf configure
     $ ./waf
 </pre>
