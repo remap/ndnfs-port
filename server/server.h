@@ -25,6 +25,9 @@ namespace ndnfs {
     
     extern const int file_type;
     extern const int dir_type;
+    
+    extern const int seg_size;
+    extern const int seg_size_shift;
   }
 }
 

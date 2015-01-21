@@ -347,7 +347,6 @@ CREATE TABLE IF NOT EXISTS                                        \n\
     version     INTEGER,                                          \n\
     segment     INTEGER,                                          \n\
     signature   BLOB NOT NULL,                                    \n\
-    offset      INTEGER,                                          \n\
     PRIMARY KEY (path, version, segment)                          \n\
   );                                                              \n\
 CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\

@@ -73,6 +73,12 @@ parseName(const ndn::Name& name, int &version, int &seg, std::string &path);
 void 
 processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 
+/**
+ * readFileSize reads a file from path, and extracts its size and number of segments.
+ * @param path String path to the file
+ * @param file_size Overwritten with number of bytes of the file
+ * @param total_seg Overwritten with number of segments of the file
+ */
 void 
 readFileSize(std::string path, int& file_size, int& total_seg);
 

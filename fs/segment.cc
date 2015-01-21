@@ -85,12 +85,11 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
 #endif
 
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
+  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature) VALUES (?,?,?,?);", -1, &stmt, 0);
   sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
   sqlite3_bind_int(stmt,2,ver);
   sqlite3_bind_int(stmt,3,seg);
   sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-  sqlite3_bind_int(stmt,5,segment_to_size(seg));
   
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -194,12 +193,11 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
 	  int sig_size = signature.size();
 	  
 	  sqlite3_finalize(stmt);	
-	  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature,offset) VALUES (?,?,?,?,?);", -1, &stmt, 0);
+	  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature) VALUES (?,?,?,?);", -1, &stmt, 0);
 	  sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
 	  sqlite3_bind_int(stmt,2,ver);
 	  sqlite3_bind_int(stmt,3,seg);
 	  sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-	  sqlite3_bind_int(stmt,5,segment_to_size(seg));
 	  sqlite3_step(stmt);
 	  sqlite3_finalize(stmt);
   
