@@ -32,33 +32,6 @@ int duplicate_version (const char *path, const int from_ver, const int to_ver)
 #ifdef NDNFS_DEBUG
   cout << "duplicate_version need to be reimplemented." << endl;
 #endif
-  
-  /*
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT size, totalSegments FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int (stmt, 2, from_ver);
-  if (sqlite3_step (stmt) != SQLITE_ROW) {
-	sqlite3_finalize (stmt);
-	return -1;
-  }
-  
-  int ver_size = sqlite3_column_int (stmt, 0);
-  int total_seg = sqlite3_column_int (stmt, 1);
-  
-  // Insert "to" version entry
-  sqlite3_finalize (stmt);
-  sqlite3_prepare_v2 (db, "INSERT INTO file_versions (path, version, size, totalSegments) VALUES (?,?,?,?);", -1, &stmt, 0);
-  sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
-  sqlite3_bind_int (stmt, 2, to_ver);
-  sqlite3_bind_int (stmt, 3, ver_size);
-  sqlite3_bind_int (stmt, 4, total_seg);
-  int res = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-  if (res != SQLITE_OK && res != SQLITE_DONE)
-    return -1;
-  */
-  
   return 0;
 }
 
