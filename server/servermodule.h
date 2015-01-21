@@ -67,14 +67,25 @@ void onRegisterFailed(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix);
  * <root>/<path>/<version>/_meta/<segment> and <root>/<path>/<version>/<segment>/_meta
  * may both be valid. And wrong sequence in received name should not fetch back stuff.
  */
-int parseName(const ndn::Name& name, int &version, int &seg, std::string &path);
+int 
+parseName(const ndn::Name& name, int &version, int &seg, std::string &path);
 
-void processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
+void 
+processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 
-void sendDir(std::string path, ndn::Transport& transport);
+void 
+readFileSize(std::string path, int& file_size, int& total_seg);
 
-void sendFile(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
+int 
+sendDirAttr(std::string path, ndn::Transport& transport);
 
-void readFileSize(std::string path, int& file_size, int& total_seg);
+int 
+sendFileMeta(ndn::Name interest_name, std::string path, int version, ndn::Transport& transport);
+
+int 
+sendFileAttr(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
+
+int 
+sendFileContent(ndn::Name interest_name, std::string path, int version, int seg, ndn::Transport& transport);
 
 #endif // __SERVER_MODULE_H__

@@ -44,10 +44,6 @@ using namespace std;
 using namespace ndn;
 using namespace ndnfs::server;
 
-// should put in a shared config with ndnfs implementation
-const int BLOCKSIZE = 8192;
-const int SEGSIZESHIFT = 13;
-
 /**
  * readFileSize reads a file from path, and extracts its size and number of segments.
  * @param path String path to the file
@@ -66,15 +62,18 @@ void readFileSize(string path, int& file_size, int& total_seg)
   return;
 }
 
-void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::shared_ptr<const Interest>& interest, Transport& transport, uint64_t registeredPrefixId) {
+void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::shared_ptr<const Interest>& interest, Transport& transport, uint64_t registeredPrefixId) 
+{
   processInterest(interest->getName(), transport);
 }
 
-void onRegisterFailed(const ptr_lib::shared_ptr<const Name>& prefix) {
+void onRegisterFailed(const ptr_lib::shared_ptr<const Name>& prefix) 
+{
   cerr << "Register failed" << endl;
 }
 
-int parseName(const ndn::Name& name, int &version, int &seg, string &path) {
+int parseName(const ndn::Name& name, int &version, int &seg, string &path) 
+{
   int ret = -1;
   version = -1;
   seg = -1;
@@ -160,7 +159,8 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path) {
   return ret;
 }
 
-void processInterest(const Name& interest_name, Transport& transport) {
+void processInterest(const Name& interest_name, Transport& transport) 
+{
   string path;
   int version;
   int seg;
@@ -168,92 +168,19 @@ void processInterest(const Name& interest_name, Transport& transport) {
 
   // The client is asking for a segment of a file.
   if (ret == 3) {
-	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-	sqlite3_bind_int(stmt, 2, version);
-	sqlite3_bind_int(stmt, 3, seg);
-	if(sqlite3_step(stmt) != SQLITE_ROW){
-	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
-	  sqlite3_finalize(stmt);
-	  return;
-	}
-
-	const char * signatureBlob = (const char *)sqlite3_column_blob(stmt, 3);
-	int len = sqlite3_column_bytes(stmt, 3);
-	sqlite3_finalize(stmt);
-
-	// For now, the signature type is assumed to be Sha256withRSA; should read
-	// signature type from database, which is not yet implemented in the database
-	Sha256WithRsaSignature signature;
-	
-	signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
-	
-	Data data;
-	data.setName(interest_name);
-	data.setSignature(signature);
-
-	// When assembling the data packet, finalblockid should be put into each segment,
-	// this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
-	int total_seg = 0;
-	int file_size = 0;
-	readFileSize(path, file_size, total_seg);
-  
-	if (total_seg > 0) {
-	  // in the JS plugin, finalBlockId component is parsed with toSegment
-	  // not sure if it's supposed to be like this in other ndn applications,
-	  // if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
-	  Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
-	  data.getMetaInfo().setFinalBlockId(finalBlockId);
-	}
-	
-	int fd;
-	// Opening in server module has clue that the path is relative to fs_path
-	char file_path[PATH_MAX] = "";
-	abs_path(file_path, path.c_str());
-	
-	fd = open(file_path, O_RDONLY);
-	
-	if (fd == -1) {
-	  cout << "Open " << file_path << " failed." << endl;
-	  return;
-	}
-	
-	char output[BLOCKSIZE] = "";
-	int actualLen = pread(fd, output, BLOCKSIZE, seg << SEGSIZESHIFT);
-	
-	close(fd);
-	
-	if (actualLen == -1) {
-	  cout << "Read from " << file_path << " failed." << endl;
-	  return;
-	}
-	
-	data.setContent((uint8_t*)output, actualLen);
-	
-	Blob encodedData = data.wireEncode();
-	transport.send(*encodedData);
-#ifdef NDNFS_DEBUG
-	cout << "processInterest(): content object returned and interest consumed" << endl;
-#endif
+	ret = sendFileContent(interest_name, path, version, seg, transport);
+    if (ret != -1) {
+      
+    }
   }
   // The client is asking for a certain version of a file
   else if (ret == 2) {
-	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-	sqlite3_bind_int(stmt, 2, version);
-	if (sqlite3_step(stmt) != SQLITE_ROW){
-#ifdef NDNFS_DEBUG
-	  cout << "processInterest(): no such file/version found in ndnfs: " << path << endl;
-#endif
-	  sqlite3_finalize(stmt);
-	  return;
-	}
-	
 	// TODO: when asking for file with version specified, current server does not query for the mime_type
-	sendFile(path, "", version, transport);
-	sqlite3_finalize(stmt);
+	ret = sendFileAttr(path, "", version, transport);
+	if (ret == -1) {
+	  cout << "processInterest(): no such file/version found in ndnfs: " << path << endl;
+	  return ;
+	}
   }
   // The client is asking for 'generic' info about a file/folder in ndnfs
   else if (ret == 1) {
@@ -265,70 +192,144 @@ void processInterest(const Name& interest_name, Transport& transport) {
 	  sqlite3_finalize(stmt);
 	  
 	  // It may not be a file, but a folder instead, which is not stored in database
-	  DIR *dp;
-	  char folder_path[PATH_MAX] = "";
-	  abs_path(folder_path, path.c_str());
-	
-	  dp = opendir(folder_path);
-	
-	  if (dp != NULL) {
-	    closedir(dp);
-	    sendDir(path, transport);
-	  } else {
-	    cout << "processInterest(): no such folder found in ndnfs: " << path << endl;
-	  }
+	  ret = sendDirAttr(path, transport);
 	}
 	else {
 	  int ver = sqlite3_column_int(stmt, 0);
 	  string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
 	
 	  sqlite3_finalize(stmt);
-	  sendFile(path, mimeType, ver, transport);
+	  ret = sendFileAttr(path, mimeType, ver, transport);
     }
     return;
   }
   // The client is asking for the meta_info of a file
   else if (ret == 4) {
-	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(db, "SELECT mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-#ifdef NDNFS_DEBUG
-	  cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
-#endif
-	  sqlite3_finalize(stmt);
-	  return;
-	}
-	
-	// right now, if the requested path is a file, whenever meta_info is asked, the server replies with 
-	// name: <received name>/<mime_type>, content: mime_type	
-	// if the requested path is a folder, the server does not reply with anything	
-	string mimeType = string((char *)sqlite3_column_text(stmt, 1));
-	
-	version = sqlite3_column_int(stmt, 7);
-	sqlite3_finalize(stmt);
-	sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-	sqlite3_bind_int(stmt, 2, version);
-	
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  sqlite3_finalize(stmt);
-	  return;
-	}
-	  
-	Name metaName(interest_name);
-	metaName.append(NdnfsNamespace::mimeComponentName_);
-	
-	Data data(metaName);
-	data.setContent((const uint8_t *)&mimeType[0], mimeType.size());
-	keyChain->sign(data, certificateName);
-	transport.send(*data.wireEncode());
-	
-	sqlite3_finalize(stmt);
+    ret = sendFileMeta(interest_name, path, version, transport);
+    return;
   }
 }
 
-void sendFile(const string& path, const string& mimeType, int version, Transport& transport) {
+int sendFileMeta(Name interest_name, string path, int version, Transport& transport)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+  if (sqlite3_step(stmt) != SQLITE_ROW) {
+	cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
+	sqlite3_finalize(stmt);
+	return -1;
+  }
+  
+  // right now, if the requested path is a file, whenever meta_info is asked, the server replies with 
+  // name: <received name>/<mime_type>, content: mime_type	
+  // if the requested path is a folder, the server does not reply with anything	
+  string mimeType = string((char *)sqlite3_column_text(stmt, 1));
+  
+  version = sqlite3_column_int(stmt, 7);
+  sqlite3_finalize(stmt);
+  sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, version);
+  
+  if (sqlite3_step(stmt) != SQLITE_ROW) {
+	sqlite3_finalize(stmt);
+	return -1;
+  }
+	
+  Name name(interest_name);
+  name.append(NdnfsNamespace::mimeComponentName_);
+  
+  Data data(name);
+  data.setContent((const uint8_t *)&mimeType[0], mimeType.size());
+  keyChain->sign(data, certificateName);
+  transport.send(*data.wireEncode());
+  
+  sqlite3_finalize(stmt);
+  return 0;
+}
+
+int sendFileContent(Name interest_name, string path, int version, int seg, Transport& transport)
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, version);
+  sqlite3_bind_int(stmt, 3, seg);
+  if(sqlite3_step(stmt) != SQLITE_ROW){
+	cout << "processInterest(): no such file version/segment found in ndnfs: " << path << endl;
+	sqlite3_finalize(stmt);
+	return -1;
+  }
+
+  const char * signatureBlob = (const char *)sqlite3_column_blob(stmt, 3);
+  int len = sqlite3_column_bytes(stmt, 3);
+  sqlite3_finalize(stmt);
+
+  // For now, the signature type is assumed to be Sha256withRSA; should read
+  // signature type from database, which is not yet implemented in the database
+  Sha256WithRsaSignature signature;
+  
+  signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
+  
+  Data data;
+  data.setName(interest_name);
+  data.setSignature(signature);
+
+  // When assembling the data packet, finalblockid should be put into each segment,
+  // this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
+  int total_seg = 0;
+  int file_size = 0;
+  readFileSize(path, file_size, total_seg);
+
+  if (total_seg > 0) {
+	// in the JS plugin, finalBlockId component is parsed with toSegment
+	// not sure if it's supposed to be like this in other ndn applications,
+	// if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
+	Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
+	data.getMetaInfo().setFinalBlockId(finalBlockId);
+  }
+  
+  int fd;
+  char file_path[PATH_MAX] = "";
+  abs_path(file_path, path.c_str());
+  
+  fd = open(file_path, O_RDONLY);
+  
+  if (fd == -1) {
+	cout << "Open " << file_path << " failed." << endl;
+	return -1;
+  }
+  
+  char output[BLOCKSIZE] = "";
+  int actual_len = pread(fd, output, BLOCKSIZE, seg << SEGSIZESHIFT);
+  
+  close(fd);
+  
+  if (actual_len == -1) {
+	cout << "Read from " << file_path << " failed." << endl;
+	return -1;
+  }
+  
+  data.setContent((uint8_t*)output, actual_len);
+  
+  Blob encodedData = data.wireEncode();
+  transport.send(*encodedData);
+  return actual_len;
+}
+
+int sendFileAttr(const string& path, const string& mimeType, int version, Transport& transport) 
+{
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, version);
+  if (sqlite3_step(stmt) != SQLITE_ROW){
+	sqlite3_finalize(stmt);
+	return -1;
+  }
+  sqlite3_finalize(stmt);
+  
   int total_seg = 0;
   int file_size = 0;
   readFileSize(path, file_size, total_seg);
@@ -350,30 +351,31 @@ void sendFile(const string& path, const string& mimeType, int version, Transport
   
   Blob ndnfsFileComponent = Name::fromEscapedString(NdnfsNamespace::fileComponentName_);
   name.append(ndnfsFileComponent).appendVersion(version);
-  Data data0;
-  data0.setName(name);
+  Data data;
+  data.setName(name);
   
   Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
   
-  data0.getMetaInfo().setFinalBlockId(finalBlockId);
-  data0.setContent((uint8_t*)wireData, infof.ByteSize());
+  data.getMetaInfo().setFinalBlockId(finalBlockId);
+  data.setContent((uint8_t*)wireData, infof.ByteSize());
   
-  keyChain->sign(data0, certificateName);
-  transport.send(*data0.wireEncode());
+  keyChain->sign(data, certificateName);
+  transport.send(*data.wireEncode());
   
   cout << "Data returned with name: " << name.toUri() << endl;
   
   delete wireData;
-  return;
+  return 0;
 }
 
-void sendDir(string path, Transport& transport) {
+int sendDirAttr(string path, Transport& transport) {
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, path.c_str());
 	
   DIR *dp = opendir(dir_path);
-  if (dp == NULL)
-	return;
+  if (dp == NULL) {
+	return -1;
+  }
   
   int count = 0;
   ndnfs::DirInfoArray infoa;
@@ -403,8 +405,8 @@ void sendDir(string path, Transport& transport) {
   Blob ndnfsDirComponent = Name::fromEscapedString(NdnfsNamespace::dirComponentName_);
   name.append(ndnfsDirComponent).appendVersion(mtime);
 
-  Data data0;
-  data0.setName(name);
+  Data data;
+  data.setName(name);
   char *wireData;
   int dataSize = 0;
   
@@ -419,11 +421,10 @@ void sendDir(string path, Transport& transport) {
     strcpy(wireData, "Empty folder.\n");
   }
   
-  data0.setContent((uint8_t*)wireData, dataSize);
-  keyChain->sign(data0, certificateName);
-  transport.send(*data0.wireEncode());
+  data.setContent((uint8_t*)wireData, dataSize);
+  keyChain->sign(data, certificateName);
+  transport.send(*data.wireEncode());
   
   delete wireData;
-  
-  return;
+  return 0;
 }
