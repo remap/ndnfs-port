@@ -57,7 +57,7 @@ void readFileSize(string path, int& file_size, int& total_seg)
 
 void onRegisterFailed(const ptr_lib::shared_ptr<const Name>& prefix) 
 {
-  cerr << "Register failed" << endl;
+  FILE_LOG(LOG_ERROR) << "onRegisterFailed: Register failed for prefix: " << prefix->toUri() << endl;
 }
 
 int parseName(const ndn::Name& name, int &version, int &seg, string &path) 

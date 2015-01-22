@@ -32,6 +32,7 @@ using namespace std;
 string ndnfs::server::db_name = "/tmp/ndnfs.db";
 string ndnfs::server::fs_path = "/tmp/ndnfs";
 string ndnfs::server::fs_prefix = "/ndn/broadcast/ndnfs";
+string ndnfs::server::logging_path = "";
 
 const int ndnfs::server::dir_type = 0;
 const int ndnfs::server::file_type = 1;
@@ -52,18 +53,11 @@ void abs_path(char *dest, const char *src)
 }
 
 void usage() {
-  fprintf(stderr, "Usage: ./ndnfs-server [-p serving prefix][-d db file][-f file system root]\n");
+  fprintf(stderr, "Usage: ./ndnfs-server [-p serving prefix][-d db file][-f file system root][-l logging file path]\n");
   exit(1);
 }
 
 int main(int argc, char **argv) {
-  // log configuration
-  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
-  FILE* log_fd = fopen( "ndnfs-server.log", "w" );
-  Output2FILE::stream() = log_fd;
-  
-  FILE_LOG(LOG_DEBUG) << "NDNFS logging";
-
   // Initialize the keychain
   ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
   ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
@@ -86,7 +80,7 @@ int main(int argc, char **argv) {
   face.setCommandSigningInfo(*ndnfs::server::keyChain, ndnfs::server::certificateName);
   
   int opt;
-  while ((opt = getopt(argc, argv, "p:d:f:")) != -1) {
+  while ((opt = getopt(argc, argv, "p:d:f:l:")) != -1) {
 	switch (opt) {
 	case 'p':
 	  ndnfs::server::fs_prefix.assign(optarg);
@@ -97,25 +91,36 @@ int main(int argc, char **argv) {
 	case 'f':
 	  ndnfs::server::fs_path.assign(optarg);
 	  break;
+	case 'l':
+	  ndnfs::server::logging_path.assign(optarg);
 	default:
 	  usage();
 	  break;
 	}
   }
-	  
-  cout << "main: open sqlite database" << endl;
+
+  // log configuration
+  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
+  FILE* log_fd = fopen(ndnfs::server::logging_path.c_str(), "w" );
+  if (ndnfs::server::logging_path == "" || log_fd == NULL) {
+	Output2FILE::stream() = stdout;
+  } else {
+    Output2FILE::stream() = log_fd;
+  }
+  
+  FILE_LOG(LOG_DEBUG) << "NDNFS logging." << endl;
 
   if (sqlite3_open(ndnfs::server::db_name.c_str(), &ndnfs::server::db) == SQLITE_OK) {
-	cout << "main: ok" << endl;
+	FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
   } else {
-	cout << "main: cannot connect to sqlite db, quit" << endl;
+	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
 	sqlite3_close(ndnfs::server::db);
 	return -1;
   }
 
-  cout << "serving prefix: " << ndnfs::server::fs_prefix << endl;
-  cout << "db file: " << ndnfs::server::db_name << endl;
-  cout << "fs root path: " << ndnfs::server::fs_path << endl;
+  FILE_LOG(LOG_DEBUG) << "main: serving prefix: " << ndnfs::server::fs_prefix << endl;
+  FILE_LOG(LOG_DEBUG) << "main: db file: " << ndnfs::server::db_name << endl;
+  FILE_LOG(LOG_DEBUG) << "main: fs root path: " << ndnfs::server::fs_path << endl;
   
   ndn::Name prefix_name(ndnfs::server::fs_prefix);
   
@@ -125,7 +130,7 @@ int main(int argc, char **argv) {
 	usleep (10000);
   }
 
-  cout << "main(): ServerModule exiting ..." << endl;
+  FILE_LOG(LOG_DEBUG) << "main: server exit." << endl;
 
   return 0;
 }

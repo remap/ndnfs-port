@@ -205,7 +205,7 @@ void abs_path(char *dest, const char *path)
 
 void usage()
 {
-  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] " << endl;
+  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] [-o prefix=\"prefix\"]" << endl;
   return;
 }
 
@@ -285,9 +285,10 @@ int main(int argc, char **argv)
   fuse_opt_parse(&args, &conf, ndnfs_opts, NULL);
 
   if (conf.prefix != NULL) {
-	ndn::Name InterestBaseName(conf.prefix);
-	ndnfs::global_prefix = InterestBaseName.toUri();
+	ndn::Name interestBaseName(conf.prefix);
+	ndnfs::global_prefix = interestBaseName.toUri();
   }
+  
   cout << "main: global prefix is " << ndnfs::global_prefix << endl;
 
   cout << "main: test sqlite connection..." << endl;

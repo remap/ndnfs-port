@@ -24,6 +24,7 @@ namespace ndnfs {
     extern std::string db_name;
     extern std::string fs_path;
     extern std::string fs_prefix;
+    extern std::string logging_path;
     
     extern const int file_type;
     extern const int dir_type;
