@@ -13,6 +13,8 @@
 #include <sqlite3.h>
 #include <unistd.h>
 
+#include "logger.h"
+
 namespace ndnfs {
   namespace server {
 	extern sqlite3 *db;

@@ -57,6 +57,13 @@ void usage() {
 }
 
 int main(int argc, char **argv) {
+  // log configuration
+  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
+  FILE* log_fd = fopen( "ndnfs-server.log", "w" );
+  Output2FILE::stream() = log_fd;
+  
+  FILE_LOG(LOG_DEBUG) << "NDNFS logging";
+
   // Initialize the keychain
   ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
   ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());

@@ -184,11 +184,11 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	  ret = sendDirAttr(path, transport);
 	}
 	else {
-	  int ver = sqlite3_column_int(stmt, 0);
+	  version = sqlite3_column_int(stmt, 0);
 	  string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
 	
 	  sqlite3_finalize(stmt);
-	  ret = sendFileAttr(path, mimeType, ver, transport);
+	  ret = sendFileAttr(path, mimeType, version, transport);
     }
     return;
   }
@@ -358,7 +358,8 @@ int sendFileAttr(const string& path, const string& mimeType, int version, Transp
   return 0;
 }
 
-int sendDirAttr(string path, Transport& transport) {
+int sendDirAttr(string path, Transport& transport) 
+{
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, path.c_str());
 	

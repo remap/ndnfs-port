@@ -18,6 +18,7 @@ build/
 *.dat
 *.properties
 *.pyc
+*.log
 
 test-browser/Protobuf
 contrib/
