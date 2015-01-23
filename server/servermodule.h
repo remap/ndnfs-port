@@ -1,5 +1,3 @@
-Hi Jeff,
-
 /*
  * Copyright (c) 2014 University of California, Los Angeles
  *
