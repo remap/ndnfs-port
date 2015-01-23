@@ -16,6 +16,7 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include "file.h"
@@ -34,7 +35,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
   ret = open(full_path, fi->flags);
   
   if (ret == -1) {
-    cerr << "ndnfs_open: open failed. Full path: " << full_path << ". Errno: " << -errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_open: open failed. Full path: " << full_path << ". Errno: " << -errno << endl;
     return -errno;
   }
   close(ret);
@@ -81,9 +82,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
  */
 int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_mknod: path=" << path << ", mode=0" << std::oct << mode << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_mknod: path=" << path << ", mode=0" << std::oct << mode << endl;
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
@@ -146,7 +145,7 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   }
   
   if (ret == -1) {
-    cerr << "ndnfs_mknod: mknod failed. Full path: " << full_path << ". Errno " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_mknod: mknod failed. Full path: " << full_path << ". Errno " << errno << endl;
     return -errno;
   }
   
@@ -155,9 +154,7 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
 
 int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
   
   // First check if the file entry exists in the database, 
   // this now presumes we don't want to do anything with older versions of the file
@@ -179,14 +176,14 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
   int fd = open(full_path, O_RDONLY);
   
   if (fd == -1) {
-    cerr << "ndnfs_read: open error. Errno: " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_read: open error. Errno: " << errno << endl;
     return -errno;
   }
   
   int read_len = pread(fd, buf, size, offset);
   
   if (read_len < 0) {
-    cerr << "ndnfs_read: read error. Errno: " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_read: read error. Errno: " << errno << endl;
     return -errno;
   }
   
@@ -197,9 +194,7 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
 
 int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_write: path=" << path << std::dec << ", size=" << size << ", offset=" << offset << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_write: path=" << path << std::dec << ", size=" << size << ", offset=" << offset << endl;
   
   // First check if the entry exists in the database
   sqlite3_stmt *stmt;
@@ -218,13 +213,13 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   abs_path(full_path, path);
   int fd = open(full_path, O_RDWR);
   if (fd == -1) {
-    cerr << "ndnfs_write: open error. Errno: " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_write: open error. Errno: " << errno << endl;
     return -errno;
   }
 
   int write_len = pwrite(fd, buf, size, offset);
   if (write_len < 0) {
-    cerr << "ndnfs_write: write error. Errno: " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_write: write error. Errno: " << errno << endl;
     return -errno;
   }
   
@@ -253,7 +248,7 @@ int ndnfs_truncate (const char *path, off_t length)
   
   int trunc_ret = truncate(full_path, length);
   if (trunc_ret == -1) {
-    cerr << "ndnfs_truncate: error. Full path " << full_path << ". Errno " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_truncate: error. Full path " << full_path << ". Errno " << errno << endl;
     return -errno;
   }
   
@@ -263,9 +258,7 @@ int ndnfs_truncate (const char *path, off_t length)
 
 int ndnfs_unlink(const char *path)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_unlink: path=" << path << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_unlink: path=" << path << endl;
 
   // TODO: update remove_versions
   remove_file_entry(path);
@@ -282,7 +275,7 @@ int ndnfs_unlink(const char *path)
   int ret = unlink(full_path);
   
   if (ret == -1) {
-    cerr << "ndnfs_unlink: unlink failed. Errno: " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_unlink: unlink failed. Errno: " << errno << endl;
     return -errno;
   }
     
@@ -291,9 +284,7 @@ int ndnfs_unlink(const char *path)
 
 int ndnfs_release (const char *path, struct fuse_file_info *fi)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
   int curr_version = time(0);
 
   // First we check if the file exists
@@ -313,7 +304,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
     sqlite3_bind_text (stmt, 2, path, -1, SQLITE_STATIC);
     res = sqlite3_step (stmt);
     if (res != SQLITE_OK && res != SQLITE_DONE) {
-      cerr << "ndnfs_release: update file_system error. " << res << endl;
+      FILE_LOG(LOG_ERROR) << "ndnfs_release: update file_system error. " << res << endl;
       return res;
     }
     sqlite3_finalize (stmt);
@@ -337,7 +328,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
     int fd = open(full_path, O_RDONLY);
     
     if (fd == -1) {
-      cerr << "ndnfs_release: open error. Errno: " << errno << endl;
+      FILE_LOG(LOG_ERROR) << "ndnfs_release: open error. Errno: " << errno << endl;
       return -errno;
     }
     
@@ -348,7 +339,7 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
     while (size == ndnfs::seg_size) {
       size = pread(fd, buf, ndnfs::seg_size, seg << ndnfs::seg_size_shift);
       if (size == -1) {
-        cerr << "ndnfs_release: read error. Errno: " << errno << endl;
+        FILE_LOG(LOG_ERROR) << "ndnfs_release: read error. Errno: " << errno << endl;
         return -errno;    
       }
       sign_segment (path, curr_version, seg, buf, size);
@@ -380,14 +371,13 @@ int ndnfs_utimens(const char *path, const struct timespec ts[2])
 
 int ndnfs_statfs(const char *path, struct statvfs *si)
 {
-  //cout << "ndnfs_statfs: stat called." << endl;
   char full_path[PATH_MAX];
   abs_path(full_path, path);
   
   int ret = statvfs(full_path, si);
 
   if (ret == -1) {
-    cerr << "ndnfs_statfs: stat failed. Errno " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_statfs: stat failed. Errno " << errno << endl;
     return -errno;
   }
   
@@ -396,14 +386,13 @@ int ndnfs_statfs(const char *path, struct statvfs *si)
 
 int ndnfs_access(const char *path, int mask)
 {
-  //cout << "ndnfs_access: access called." << endl;
   char full_path[PATH_MAX];
   abs_path(full_path, path);
   
   int ret = access(full_path, mask);
 
   if (ret == -1) {
-    cerr << "ndnfs_access: access failed. Errno " << errno << endl;
+    FILE_LOG(LOG_ERROR) << "ndnfs_access: access failed. Errno " << errno << endl;
     return -errno;
   }
   

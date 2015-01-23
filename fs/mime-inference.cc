@@ -1,4 +1,25 @@
+/*
+ * Copyright (c) 2014 University of California, Los Angeles
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Zhehao Wang <wangzhehao410305@gmail.com>
+ */
+ 
 #include "mime-inference.h"
+
+using namespace std;
 
 std::map<const char *, const char *, str_cmp> ext_mime_map;
 
@@ -17,7 +38,7 @@ int mime_infer(char *mime_type, const char *path)
   std::map<const char *, const char *>::iterator it = ext_mime_map.find(ext_string.c_str());
   
   if (it != ext_mime_map.end()) {
-    std::cout << "mime_infer: found matching mime type for extension: " << ext_string << "; mime_type: " << it->second << std::endl;
+    FILE_LOG(LOG_ERROR) << "mime_infer: found matching mime type for extension: " << ext_string << "; mime_type: " << it->second << std::endl;
     strcpy(mime_type, it->second);
     return 1;
   }

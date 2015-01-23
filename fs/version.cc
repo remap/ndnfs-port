@@ -16,6 +16,7 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include "version.h"
@@ -29,24 +30,20 @@ using namespace ndn;
 // duplicate_version right now is a stub
 int duplicate_version (const char *path, const int from_ver, const int to_ver)
 {
-#ifdef NDNFS_DEBUG
-  cout << "duplicate_version need to be reimplemented." << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "duplicate_version need to be reimplemented." << endl;
   return 0;
 }
 
 // write_version's function will be redefined
 int write_version(const char* path, int ver, const char *buf, size_t size, off_t offset)
 {
-  cerr << "write_version need to be reimplemented." << endl;
+  FILE_LOG(LOG_ERROR) << "write_version need to be reimplemented." << endl;
   return 0;
 }
 
 int truncate_version(const char* path, const int ver, off_t length)
 {
-#ifdef NDNFS_DEBUG
-  cout << "truncate_version: path=" << path << std::dec << ", ver=" << ver << ", length=" << length << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "truncate_version: path=" << path << std::dec << ", ver=" << ver << ", length=" << length << endl;
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
@@ -95,9 +92,7 @@ int truncate_version(const char* path, const int ver, off_t length)
 
 void remove_version(const char* path, const int ver)
 {
-#ifdef NDNFS_DEBUG
-  cout << "remove_version: path=" << path << ", ver=" << std::dec << ver << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "remove_version: path=" << path << ", ver=" << std::dec << ver << endl;
 
   remove_segments(path, ver);
   sqlite3_stmt *stmt;

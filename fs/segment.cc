@@ -16,6 +16,7 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include "segment.h"
@@ -38,9 +39,7 @@ using namespace ndn;
  */
 int sign_segment(const char* path, int ver, int seg, const char *data, int len)
 {
-#ifdef NDNFS_DEBUG
-  cout << "sign_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "sign_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", len=" << len << endl;
 
   string file_path(path);
   string full_name = ndnfs::global_prefix + file_path;
@@ -60,9 +59,7 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
   
   seg_name.appendVersion(ver);
   seg_name.appendSegment(seg);
-#ifdef NDNFS_DEBUG
-  cout << "sign_segment: segment name is " << seg_name.toUri() << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "sign_segment: segment name is " << seg_name.toUri() << endl;
 
   Data data0;
   data0.setName(seg_name);
@@ -74,15 +71,6 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
   
   const char* sig_raw = (const char*)signature.buf();
   int sig_size = signature.size();
-
-#ifdef NDNFS_DEBUG
-  cout << "sign_segment: raw signature is" << endl;
-  for (int i = 0; i < sig_size; i++) {
-	printf("%02x", (unsigned char)sig_raw[i]);
-  }
-  cout << endl;
-  cout << "sign_segment: raw signature length is " << sig_size << endl;
-#endif
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature) VALUES (?,?,?,?);", -1, &stmt, 0);
@@ -99,9 +87,7 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
 
 void remove_segments(const char* path, const int ver, const int start/* = 0 */)
 {
-#ifdef NDNFS_DEBUG
-  cout << "remove_segments: path=" << path << std::dec << ", ver=" << ver << ", starting from segment #" << start << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "remove_segments: path=" << path << std::dec << ", ver=" << ver << ", starting from segment #" << start << endl;
   /*
     sqlite3_stmt *stmt;
     sqlite3_prepare_v2(db, "SELECT totalSegments FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
@@ -129,9 +115,7 @@ void remove_segments(const char* path, const int ver, const int start/* = 0 */)
 // truncate is not tested in current implementation
 void truncate_segment(const char* path, const int ver, const int seg, const off_t length)
 {
-#ifdef NDNFS_DEBUG
-  cout << "truncate_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", length=" << length << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "truncate_segment: path=" << path << std::dec << ", ver=" << ver << ", seg=" << seg << ", length=" << length << endl;
 
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "SELECT * FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
@@ -154,14 +138,14 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
 	  abs_path(fullPath, path);
 	  int fd = open(fullPath, O_RDONLY);
 	  if (fd == -1) {
-		cerr << "truncate_segment: open error. Errno: " << errno << endl;
+		FILE_LOG(LOG_ERROR) << "truncate_segment: open error. Errno: " << errno << endl;
 		return;
 	  }
       
       char *data = new char[ndnfs::seg_size];
 	  int read_len = pread(fd, data, length, segment_to_size(seg));
 	  if (read_len < 0) {
-		cerr << "truncate_segment: write error. Errno: " << errno << endl;
+		FILE_LOG(LOG_ERROR) << "truncate_segment: write error. Errno: " << errno << endl;
 		return;
 	  }
   

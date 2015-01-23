@@ -8,6 +8,8 @@
 
 #include <unistd.h>
 
+#include "ndnfs.h"
+
 // pass the comparison method to map, since we are storing char *, the default
 // comparison would be comparing two pointers.
 struct str_cmp

@@ -16,6 +16,7 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include "attribute.h"
@@ -24,39 +25,34 @@ using namespace std;
 
 int ndnfs_getattr(const char *path, struct stat *stbuf)
 {
-#ifdef NDNFS_DEBUG
-    cout << "ndnfs_getattr: path=" << path << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_getattr: path=" << path << endl;
 
-    char fullPath[PATH_MAX];
-	abs_path(fullPath, path);
-    
-    int ret = lstat(fullPath, stbuf);
-    
-	if (ret == -1) {
-	  cerr << "ndnfs_getattr: get_attr failed. Full path " << fullPath << ". Errno " << errno << endl;
-	  return -errno;
-	}
-	return ret;
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int ret = lstat(fullPath, stbuf);
+  
+  if (ret == -1) {
+	FILE_LOG(LOG_ERROR) << "ndnfs_getattr: get_attr failed. Full path " << fullPath << ". Errno " << errno << endl;
+	return -errno;
+  }
+  return ret;
 }
 
 
 int ndnfs_chmod(const char *path, mode_t mode)
 {
-#ifdef NDNFS_DEBUG
-    cout << "ndnfs_chmod: path=" << path << ", change mode to " << std::oct << mode << endl;
-#endif
-    
-    char fullPath[PATH_MAX];
-	abs_path(fullPath, path);
-    
-    int res = chmod(fullPath, mode);
-    if (res == -1) {
-      cerr << "ndnfs_chmod: chmod failed. Errno: " << -errno << endl;
-      return -errno;
-    }
-    
-    return 0;
+  FILE_LOG(LOG_DEBUG) << "ndnfs_chmod: path=" << path << ", change mode to " << std::oct << mode << endl;
+  
+  char fullPath[PATH_MAX];
+  abs_path(fullPath, path);
+  
+  int res = chmod(fullPath, mode);
+  if (res == -1) {
+	FILE_LOG(LOG_ERROR) << "ndnfs_chmod: chmod failed. Errno: " << -errno << endl;
+	return -errno;
+  }
+  return 0;
 }
 
 
@@ -68,5 +64,5 @@ int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t
 int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
 #endif
 {
-    return 0;
+  return 0;
 }

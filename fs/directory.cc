@@ -16,6 +16,7 @@
  *
  * Author: Wentao Shang <wentao@cs.ucla.edu>
  *         Qiuhan Ding <dingqiuhan@gmail.com>
+ *         Zhehao Wang <wangzhehao410305@gmail.com>
  */
 
 #include "directory.h"
@@ -24,10 +25,8 @@ using namespace std;
 
 int ndnfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_readdir: path=" << path << endl;
-#endif
-  // instead of reading from db, we read from actual fs for the directory structure
+  FILE_LOG(LOG_DEBUG) << "ndnfs_readdir: path=" << path << endl;
+
   DIR *dp;
   struct dirent *de;
 
@@ -57,9 +56,7 @@ int ndnfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t off
 
 int ndnfs_mkdir(const char *path, mode_t mode)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_mkdir: path=" << path << ", mode=0" << std::oct << mode << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_mkdir: path=" << path << ", mode=0" << std::oct << mode << endl;
   
   // TODO: test mk-sub-dir directly
   /*  
@@ -72,7 +69,7 @@ int ndnfs_mkdir(const char *path, mode_t mode)
   int ret = mkdir(fullPath, mode);
 
   if (ret == -1) {
-	cerr << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
+	FILE_LOG(LOG_ERROR) << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
 	return -errno;
   }
   
@@ -86,9 +83,7 @@ int ndnfs_mkdir(const char *path, mode_t mode)
  */
 int ndnfs_rmdir(const char *path)
 {
-#ifdef NDNFS_DEBUG
-  cout << "ndnfs_rmdir: path=" << path << endl;
-#endif
+  FILE_LOG(LOG_DEBUG) << "ndnfs_rmdir: path=" << path << endl;
 
   if (strcmp(path, "/") == 0) {
 	// Cannot remove root dir.
@@ -100,7 +95,7 @@ int ndnfs_rmdir(const char *path)
   int ret = rmdir(fullPath);
 
   if (ret == -1) {
-	cerr << "ndnfs_rmdir: rmdir failed. Errno: " << errno << endl;
+	FILE_LOG(LOG_ERROR) << "ndnfs_rmdir: rmdir failed. Errno: " << errno << endl;
 	return -errno;
   }
   
