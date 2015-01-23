@@ -50,6 +50,7 @@
 #include <ndn-cpp/name.hpp>
 
 #include "config.h"
+#include "logger.h"
 
 extern const char *db_name;
 extern sqlite3 *db;
@@ -59,6 +60,7 @@ namespace ndnfs {
     extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
     extern std::string global_prefix;
     extern std::string root_path;
+    extern std::string logging_path;
 
     extern const int dir_type;
     extern const int file_type;

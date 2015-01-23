@@ -152,8 +152,9 @@ sqlite3 *db;
 
 ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::keyChain;
 ndn::Name ndnfs::certificateName;
-string ndnfs::global_prefix;
+string ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
 string ndnfs::root_path;
+string ndnfs::logging_path = "ndnfs.log";
 
 const int ndnfs::dir_type = 0;
 const int ndnfs::file_type = 1;
@@ -188,12 +189,14 @@ static struct fuse_operations ndnfs_fs_ops;
 
 struct ndnfs_config {
   char *prefix;
+  char *log_path;
 };
 
 #define NDNFS_OPT(t, p, v) { t, offsetof(struct ndnfs_config, p), v }
 
 static struct fuse_opt ndnfs_opts[] = {
   NDNFS_OPT("prefix=%s", prefix, 0),
+  NDNFS_OPT("log=%s", log_path, 1),
   FUSE_OPT_END
 };
 
@@ -231,9 +234,7 @@ int main(int argc, char **argv)
 	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
 	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
   
-  ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
-  
-  cout << "main: NDNFS version 0.3" << endl;
+  cout << "NDNFS: version 0.3" << endl;
   
   // Extract the root path (mount point) from running parameters;
   // it is not advised for fuse-mod to know mount point, as mount point may not be
@@ -244,7 +245,7 @@ int main(int argc, char **argv)
   for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
   if (i == argc) {
-	cerr << "main: missing actual folder path." << endl;
+	cerr << "Error: missing actual folder path." << endl;
 	usage();
 	return -1;
   }
@@ -253,13 +254,13 @@ int main(int argc, char **argv)
   struct stat s;
   int err = stat(argv[i], &s);
   if (err == -1) {
-	cerr << "main: actual folder does not exist." << endl;
+	cerr << "Error: actual folder does not exist." << endl;
 	return 0;
   } else {
 	if(S_ISDIR(s.st_mode)) {
-	  cout << "main: root path is " << realpath(argv[i], NULL) << endl;
+	  cout << "NDNFS: root path is " << realpath(argv[i], NULL) << endl;
 	} else {
-      cerr << "main: actual folder is a file." << endl;
+      cerr << "Error: actual folder is a file." << endl;
       return 0;
 	}
   }
@@ -289,24 +290,30 @@ int main(int argc, char **argv)
 	ndnfs::global_prefix = interestBaseName.toUri();
   }
   
-  cout << "main: global prefix is " << ndnfs::global_prefix << endl;
-
-  cout << "main: test sqlite connection..." << endl;
+  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
+  if (conf.log_path != NULL) {
+    ndnfs::logging_path = string(conf.log_path);
+	FILE* log_fd = fopen(ndnfs::logging_path.c_str(), "w");
+	if (ndnfs::logging_path == "" || log_fd == NULL) {
+	  Output2FILE::stream() = stdout;
+	} else {
+	  Output2FILE::stream() = log_fd;
+	}
+  } else {
+    Output2FILE::stream() = stdout;
+  }
+  
+  FILE_LOG(LOG_DEBUG) << "main: global prefix is " << ndnfs::global_prefix << endl;
 
   if (sqlite3_open(db_name, &db) == SQLITE_OK) {
-	cout << "main: sqlite db open ok" << endl;
+	FILE_LOG(LOG_DEBUG) << "main: sqlite db open ok" << endl;
   } else {
-	cout << "main: cannot connect to sqlite db, quit" << endl;
+	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
 	sqlite3_close(db);
 	return -1;
   }
-    
-  cout << "main: init tables in sqlite db..." << endl;
   
   // Init tables in database
-  
-  // Since actual data is not stored in database,
-  // for each re-run, does it make sense to recreate the table no matter if it already exists.
   const char* INIT_FS_TABLE = "\
 CREATE TABLE IF NOT EXISTS                        \n\
   file_system(                                    \n\
@@ -355,15 +362,15 @@ CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
 
   sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
 
-  cout << "main: table creation ok" << endl;
+  FILE_LOG(LOG_DEBUG) << "main: table creation ok" << endl;
 
-  cout << "main: initializing file mime_type inference..." << endl;
+  FILE_LOG(LOG_DEBUG) << "main: initializing file mime_type inference..." << endl;
   initialize_ext_mime_map();
 
-  cout << "main: mount root folder..." << endl;
+  FILE_LOG(LOG_DEBUG) << "main: mount root folder..." << endl;
 
   create_fuse_operations(&ndnfs_fs_ops);
   
-  cout << "main: enter FUSE main loop" << endl << endl;
+  cout << "NDNFS: enter FUSE main loop. Log written to " << ndnfs::logging_path << endl;
   return fuse_main(args.argc, args.argv, &ndnfs_fs_ops, NULL);
 }

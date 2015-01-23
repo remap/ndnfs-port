@@ -77,28 +77,28 @@ def build (bld):
     bld (
         target = "ndnfs-server",
         features = ["cxx", "cxxprogram"],
-        source = bld.path.ant_glob (['server/*.cc', 'server/*.proto']),
+        source = bld.path.ant_glob(['server/*.cc', 'server/*.proto']),
         use = 'NDNCPP SQLITE3 PROTOBUF',
-        includes = 'server'
+        includes = 'fs server'
         )
     bld (
         target = "test-client",
         features = ["cxx", "cxxprogram"],
-        source = 'test/client.cc test/handler.cc server/dir.proto server/file.proto',
+        source = bld.path.ant_glob(['test/client.cc', 'test/handler.cc', 'server/*.proto']),
         use = 'NDNCPP PROTOBUF',
         includes = 'server'
         )
     bld (
         target = "cat-file",
         features = ["cxx", "cxxprogram"],
-        source = 'test/cat_file.cc server/dir.proto server/file.proto',
+        source = bld.path.ant_glob(['test/cat_file.cc', 'server/*.proto']),
         use = 'BOOST NDNCPP PROTOBUF',
         includes = 'server'
         )
     bld (
         target = "cat-file-pipe",
         features = ["cxx", "cxxprogram"],
-        source = 'test/cat_file_pipe.cc server/dir.proto server/file.proto',
+        source = bld.path.ant_glob(['test/cat_file_pipe.cc', 'server/*.proto']),
         use = 'BOOST NDNCPP PROTOBUF',
         includes = 'server'
         )

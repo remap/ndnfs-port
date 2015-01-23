@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     Output2FILE::stream() = log_fd;
   }
   
-  FILE_LOG(LOG_DEBUG) << "NDNFS logging." << endl;
+  FILE_LOG(LOG_DEBUG) << "Ndnfs-server logging." << endl;
 
   if (sqlite3_open(ndnfs::server::db_name.c_str(), &ndnfs::server::db) == SQLITE_OK) {
 	FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
