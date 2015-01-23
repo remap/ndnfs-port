@@ -29,6 +29,7 @@ Hi Jeff,
 #define NDNFS_DEBUG
 
 #include <string>
+#include <cstring>
 
 #include <ndn-cpp/face.hpp>
 #include <ndn-cpp/common.hpp>
