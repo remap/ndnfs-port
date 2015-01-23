@@ -93,6 +93,7 @@ int main(int argc, char **argv) {
 	  break;
 	case 'l':
 	  ndnfs::server::logging_path.assign(optarg);
+	  break;
 	default:
 	  usage();
 	  break;
