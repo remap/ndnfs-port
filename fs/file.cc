@@ -356,15 +356,61 @@ int ndnfs_utimens(const char *path, const struct timespec ts[2])
 {        
   int res;
   struct timeval tv[2];
-
+  
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  
   tv[0].tv_sec = ts[0].tv_sec;
   tv[0].tv_usec = ts[0].tv_nsec / 1000;
   tv[1].tv_sec = ts[1].tv_sec;
   tv[1].tv_usec = ts[1].tv_nsec / 1000;
 
-  res = utimes(path, tv);
+  res = utimes(full_path, tv);
   if (res == -1)
     return -errno;
+
+  return 0;
+}
+
+int ndnfs_readlink(const char *path, char *buf, size_t size)
+{
+  int res;
+  
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  
+  res = readlink(full_path, buf, size - 1);
+  if (res == -1)
+	return -errno;
+
+  buf[res] = '\0';
+  return 0;
+}
+
+int ndnfs_symlink(const char *from, const char *to)
+{
+  int res;
+  
+  char full_path[PATH_MAX];
+  abs_path(full_path, from);
+  
+  res = symlink(full_path, to);
+  if (res == -1)
+	return -errno;
+
+  return 0;
+}
+
+int ndnfs_link(const char *from, const char *to)
+{
+  int res;
+  
+  char full_path[PATH_MAX];
+  abs_path(full_path, from);
+  
+  res = link(full_path, to);
+  if (res == -1)
+	return -errno;
 
   return 0;
 }

@@ -47,4 +47,10 @@ int ndnfs_access(const char *path, int mask);
 
 int ndnfs_utimens(const char *path, const struct timespec ts[2]);
 
+int ndnfs_link(const char *from, const char *to);
+
+int ndnfs_symlink(const char *from, const char *to);
+
+int ndnfs_readlink(const char *path, char *buf, size_t size);
+
 #endif

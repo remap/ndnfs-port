@@ -144,7 +144,7 @@ ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::keyChain;
 ndn::Name ndnfs::certificateName;
 string ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
 string ndnfs::root_path;
-string ndnfs::logging_path = "ndnfs.log";
+string ndnfs::logging_path = "";
 
 const int ndnfs::dir_type = 0;
 const int ndnfs::file_type = 1;
@@ -173,6 +173,9 @@ static void create_fuse_operations(struct fuse_operations *fuse_op)
   fuse_op->statfs   = ndnfs_statfs;
   fuse_op->access   = ndnfs_access;
   fuse_op->utimens  = ndnfs_utimens;
+  fuse_op->link     = ndnfs_link;
+  fuse_op->readlink = ndnfs_readlink;
+  fuse_op->symlink  = ndnfs_symlink;
 }
 
 static struct fuse_operations ndnfs_fs_ops;
