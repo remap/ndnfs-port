@@ -358,7 +358,7 @@ CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
   initialize_ext_mime_map();
 
   FILE_LOG(LOG_DEBUG) << "main: mount root folder..." << endl;
-
+  
   create_fuse_operations(&ndnfs_fs_ops);
   
   cout << "NDNFS: enter FUSE main loop. Log written to " << ndnfs::logging_path << endl;

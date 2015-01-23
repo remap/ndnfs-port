@@ -60,7 +60,8 @@ public:
 	std::time_t time = std::time(nullptr);  
 	os << "- " << time;
 	os << " " << toString(level) << ": ";
-	os << std::string(level > LOG_DEBUG ? 0 : level - LOG_DEBUG, '\t');
+	
+	os << std::string(level > LOG_DEBUG ? level - LOG_DEBUG : 0, '\t');
 	logLevel_ = level;
 	return os;
   }
