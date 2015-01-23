@@ -391,10 +391,13 @@ int ndnfs_symlink(const char *from, const char *to)
 {
   int res;
   
-  char full_path[PATH_MAX];
-  abs_path(full_path, from);
+  char full_path_from[PATH_MAX];
+  abs_path(full_path_from, from);
   
-  res = symlink(full_path, to);
+  char full_path_to[PATH_MAX];
+  abs_path(full_path_to, to);
+  
+  res = symlink(full_path_from, full_path_to);
   if (res == -1)
 	return -errno;
 
@@ -405,10 +408,30 @@ int ndnfs_link(const char *from, const char *to)
 {
   int res;
   
-  char full_path[PATH_MAX];
-  abs_path(full_path, from);
+  char full_path_from[PATH_MAX];
+  abs_path(full_path_from, from);
   
-  res = link(full_path, to);
+  char full_path_to[PATH_MAX];
+  abs_path(full_path_to, to);
+  
+  res = link(full_path_from, full_path_to);
+  if (res == -1)
+	return -errno;
+
+  return 0;
+}
+
+int ndnfs_rename(const char *from, const char *to)
+{
+  int res;
+
+  char full_path_from[PATH_MAX];
+  abs_path(full_path_from, from);
+  
+  char full_path_to[PATH_MAX];
+  abs_path(full_path_to, to);
+  
+  res = rename(full_path_from, full_path_to);
   if (res == -1)
 	return -errno;
 

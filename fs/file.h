@@ -53,4 +53,6 @@ int ndnfs_symlink(const char *from, const char *to);
 
 int ndnfs_readlink(const char *path, char *buf, size_t size);
 
+int ndnfs_rename(const char *from, const char *to);
+
 #endif

@@ -176,6 +176,7 @@ static void create_fuse_operations(struct fuse_operations *fuse_op)
   fuse_op->link     = ndnfs_link;
   fuse_op->readlink = ndnfs_readlink;
   fuse_op->symlink  = ndnfs_symlink;
+  fuse_op->rename   = ndnfs_rename;
 }
 
 static struct fuse_operations ndnfs_fs_ops;
