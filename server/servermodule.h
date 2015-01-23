@@ -1,3 +1,5 @@
+Hi Jeff,
+
 /*
  * Copyright (c) 2014 University of California, Los Angeles
  *
@@ -82,12 +84,22 @@ processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
 void 
 readFileSize(std::string path, int& file_size, int& total_seg);
 
+/**
+ * sendDirAttr tries to decide if path is a directory, if so, it reads the directory, 
+ * and replies with everything in it, formatted with dir.proto, through transport.
+ * (Including '.' and '..')
+ * @param path String path of the directory
+ * @param transport The transport from which to send the dir info
+ */
 int 
 sendDirAttr(std::string path, ndn::Transport& transport);
 
 int 
 sendFileMeta(ndn::Name interest_name, std::string path, int version, ndn::Transport& transport);
 
+/**
+ * sendFileAttr tries
+ */
 int 
 sendFileAttr(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
 

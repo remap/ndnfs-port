@@ -167,7 +167,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	// TODO: when asking for file with version specified, current server does not query for the mime_type
 	ret = sendFileAttr(path, "", version, transport);
 	if (ret == -1) {
-	  cout << "processInterest(): no such file/version found in ndnfs: " << path << endl;
+	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
 	  return ;
 	}
   }
@@ -177,7 +177,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
 	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  cout << "processInterest(): no such file found in ndnfs: " << path << endl;
+	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
 	  sqlite3_finalize(stmt);
 	  
 	  // It may not be a file, but a folder instead, which is not stored in database
@@ -205,7 +205,7 @@ int sendFileMeta(Name interest_name, string path, int version, Transport& transp
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
   if (sqlite3_step(stmt) != SQLITE_ROW) {
-	cout << "processInterest(): no such file/directory found in ndnfs: " << path << endl;
+	FILE_LOG(LOG_DEBUG) << "sendFileMeta: no such file/directory found in ndnfs: " << path << endl;
 	sqlite3_finalize(stmt);
 	return -1;
   }
@@ -245,7 +245,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   sqlite3_bind_int(stmt, 2, version);
   sqlite3_bind_int(stmt, 3, seg);
   if(sqlite3_step(stmt) != SQLITE_ROW){
-	cout << "processInterest(): no such file version/segment found in ndnfs: " << path << endl;
+	FILE_LOG(LOG_DEBUG) << "sendFileContent: no such file/version/segment found in ndnfs: " << path << endl;
 	sqlite3_finalize(stmt);
 	return -1;
   }
@@ -285,7 +285,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   fd = open(file_path, O_RDONLY);
   
   if (fd == -1) {
-	cout << "Open " << file_path << " failed." << endl;
+	FILE_LOG(LOG_ERROR) << "sendFileContent: Open " << file_path << " failed." << endl;
 	return -1;
   }
   
@@ -295,7 +295,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   close(fd);
   
   if (actual_len == -1) {
-	cout << "Read from " << file_path << " failed." << endl;
+	FILE_LOG(LOG_ERROR) << "sendFileContent: Read from " << file_path << " failed." << endl;
 	return -1;
   }
   
@@ -352,7 +352,7 @@ int sendFileAttr(const string& path, const string& mimeType, int version, Transp
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());
   
-  cout << "Data returned with name: " << name.toUri() << endl;
+  FILE_LOG(LOG_DEBUG) << "sendFileAttr: Data returned with name: " << name.toUri() << endl;
   
   delete wireData;
   return 0;
@@ -407,6 +407,7 @@ int sendDirAttr(string path, Transport& transport)
 	infoa.SerializeToArray(wireData, dataSize);
   }
   else {
+    // Don't expect this to happen, there should always be . and ..
     dataSize = strlen("Empty folder.\n") + 1;
     wireData = new char[dataSize];
     strcpy(wireData, "Empty folder.\n");
