@@ -62,8 +62,6 @@ namespace ndnfs {
     extern std::string root_path;
     extern std::string logging_path;
 
-    extern const int dir_type;
-    extern const int file_type;
     extern const int version_type;
     extern const int segment_type;
     extern const int seg_size;

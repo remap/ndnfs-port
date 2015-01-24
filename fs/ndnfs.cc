@@ -146,9 +146,6 @@ string ndnfs::global_prefix = "/ndn/broadcast/ndnfs";
 string ndnfs::root_path;
 string ndnfs::logging_path = "";
 
-const int ndnfs::dir_type = 0;
-const int ndnfs::file_type = 1;
-
 const int ndnfs::seg_size = 8192;  // size of the content in each content object segment counted in bytes
 const int ndnfs::seg_size_shift = 13;
 
@@ -315,6 +312,7 @@ CREATE TABLE IF NOT EXISTS                        \n\
     current_version      INTEGER,                 \n\
     mime_type            TEXT,                    \n\
     ready_signed         INTEGER,                 \n\
+    type                 INTEGER,                 \n\
     PRIMARY KEY (path)                            \n\
   );                                              \n\
 CREATE INDEX id_path ON file_system (path);       \n\

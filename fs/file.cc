@@ -114,8 +114,8 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   // Add the file entry to database
   sqlite3_prepare_v2(db, 
                      "INSERT INTO file_system \
-                      (path, current_version, mime_type, ready_signed) \
-                      VALUES (?, ?, ?, ?);", 
+                      (path, current_version, mime_type, ready_signed, type) \
+                      VALUES (?, ?, ?, ?, ?);", 
                      -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 2, ver);  // current version
@@ -123,6 +123,34 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   
   enum SignatureState signatureState = NOT_READY;
   sqlite3_bind_int(stmt, 4, signatureState);
+  
+  enum FileType fileType = REGULAR;
+ 
+  switch (S_IFMT & mode) 
+  {
+	case S_IFDIR: 
+	  // expect this to call mkdir instead
+	  break;
+	case S_IFCHR:
+	  fileType = CHARACTER_SPECIAL;
+	  break;
+	case S_IFREG: 
+	  fileType = REGULAR;
+	  break;
+	case S_IFLNK: 
+	  fileType = SYMBOLIC_LINK;
+	  break;
+	case S_IFSOCK: 
+	  fileType = UNIX_SOCKET;
+	  break;
+	case S_IFIFO: 
+	  fileType = FIFO_SPECIAL;
+	  break;
+    default:
+      fileType = REGULAR;
+      break;
+  }
+  sqlite3_bind_int(stmt, 5, fileType);
   
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);
@@ -387,9 +415,49 @@ int ndnfs_readlink(const char *path, char *buf, size_t size)
   return 0;
 }
 
+/**
+ * symlink handling inserts file and version entry for the symlink name, 
+ * but does not create segments entry;
+ * TODO: this requires more thinking.
+ */
 int ndnfs_symlink(const char *from, const char *to)
 {
   int res;
+  
+  sqlite3_stmt *stmt;
+  sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  res = sqlite3_step(stmt);
+  if (res == SQLITE_ROW) {
+      // Cannot create symlink that has conflicting file name
+      sqlite3_finalize(stmt);
+      return -ENOENT;
+  }
+  
+  sqlite3_finalize(stmt);
+  
+  // Generate first version entry for the new symlink
+  int ver = time(0);
+  
+  sqlite3_prepare_v2(db, "INSERT INTO file_versions (path, version) VALUES (?, ?);", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, ver);
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);
+
+  // Add the symlink entry to database
+  sqlite3_prepare_v2(db, 
+                     "INSERT INTO file_system \
+                      (path, current_version, mime_type, type) \
+                      VALUES (?, ?, ?, ?);", 
+                     -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 2, ver);  // current version
+  sqlite3_bind_text(stmt, 3, "", -1, SQLITE_STATIC);
+  sqlite3_bind_int(stmt, 4, SYMBOLIC_LINK);
+  
+  sqlite3_step(stmt);
+  sqlite3_finalize(stmt);  
   
   char full_path_from[PATH_MAX];
   abs_path(full_path_from, from);

@@ -164,8 +164,22 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   }
   // The client is asking for a certain version of a file
   else if (ret == 2) {
-	// TODO: when asking for file with version specified, current server does not query for the mime_type
-	ret = sendFileAttr(path, "", version, transport);
+    // even though client is only asking for a version of file, we still query if that file exists in file_system database,
+    // and extracts mime-type and file-type from database.
+	sqlite3_stmt *stmt;
+	sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
+	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+
+	if (sqlite3_step(stmt) != SQLITE_ROW) {
+	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
+	  sqlite3_finalize(stmt);
+	  return;
+	}
+	
+	string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
+	enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
+	sqlite3_finalize(stmt);
+	ret = sendFileAttr(path, "", version, fileType, transport);
 	if (ret == -1) {
 	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
 	  return ;
@@ -174,7 +188,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   // The client is asking for 'generic' info about a file/folder in ndnfs
   else if (ret == 1) {
 	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
+	sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
 	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 	if (sqlite3_step(stmt) != SQLITE_ROW) {
 	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
@@ -185,10 +199,14 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	}
 	else {
 	  version = sqlite3_column_int(stmt, 0);
-	  string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
-	
+      string mimeType = "";
+      if (sqlite3_column_text(stmt, 3) != NULL) {
+        mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
+      }
+	  enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
+	  
 	  sqlite3_finalize(stmt);
-	  ret = sendFileAttr(path, mimeType, version, transport);
+	  ret = sendFileAttr(path, mimeType, version, fileType, transport);
     }
     return;
   }
@@ -310,7 +328,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   return actual_len;
 }
 
-int sendFileAttr(const string& path, const string& mimeType, int version, Transport& transport) 
+int sendFileAttr(const string& path, const string& mimeType, int version, FileType type, Transport& transport) 
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
@@ -322,12 +340,18 @@ int sendFileAttr(const string& path, const string& mimeType, int version, Transp
   }
   sqlite3_finalize(stmt);
   
-  int total_seg = 0;
-  int file_size = 0;
-  readFileSize(path, file_size, total_seg);
-  
   ndnfs::FileInfo infof;
   
+  int total_seg = 0;
+  int file_size = 0;
+  // only regular files will get size-read; 
+  // right now, browser plugin still asks for the first segment, even if it's symlink
+  if (type == REGULAR) {
+    readFileSize(path, file_size, total_seg);
+  } else {
+  
+  }
+  infof.set_type(type);
   infof.set_size(file_size);
   infof.set_totalseg(total_seg);
   infof.set_version(version);
@@ -382,11 +406,33 @@ int sendDirAttr(string path, Transport& transport)
 	ndnfs::DirInfo *infod = infoa.add_di();
 	
 	lstat(de->d_name, &st);
-	if(S_ISDIR(st.st_mode)) {
-	  infod->set_type(ndnfs::server::dir_type);
-	} else {
-	  infod->set_type(ndnfs::server::file_type);
+	
+	enum FileType fileType = REGULAR; 
+	switch (S_IFMT & st.st_mode) 
+	{
+	  case S_IFDIR: 
+		fileType = DIRECTORY;
+		break;
+	  case S_IFCHR:
+		fileType = CHARACTER_SPECIAL;
+		break;
+	  case S_IFREG: 
+		fileType = REGULAR;
+		break;
+	  case S_IFLNK: 
+		fileType = SYMBOLIC_LINK;
+		break;
+	  case S_IFSOCK: 
+		fileType = UNIX_SOCKET;
+		break;
+	  case S_IFIFO: 
+		fileType = FIFO_SPECIAL;
+		break;
+	  default:
+		fileType = REGULAR;
+		break;
 	}
+	infod->set_type(fileType);
     infod->set_path(de->d_name);
     count ++;
   }

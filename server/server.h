@@ -13,7 +13,9 @@
 #include <sqlite3.h>
 #include <unistd.h>
 
+// logger and file-type headers are shared by server and fs;
 #include "logger.h"
+#include "file-type.h"
 
 namespace ndnfs {
   namespace server {
@@ -25,9 +27,6 @@ namespace ndnfs {
     extern std::string fs_path;
     extern std::string fs_prefix;
     extern std::string logging_path;
-    
-    extern const int file_type;
-    extern const int dir_type;
     
     extern const int seg_size;
     extern const int seg_size_shift;

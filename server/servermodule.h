@@ -100,7 +100,7 @@ sendFileMeta(ndn::Name interest_name, std::string path, int version, ndn::Transp
  * sendFileAttr tries
  */
 int 
-sendFileAttr(const std::string& path, const std::string& mimeType, int version, ndn::Transport& transport);
+sendFileAttr(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Transport& transport);
 
 int 
 sendFileContent(ndn::Name interest_name, std::string path, int version, int seg, ndn::Transport& transport);

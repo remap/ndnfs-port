@@ -34,9 +34,6 @@ string ndnfs::server::fs_path = "/tmp/ndnfs";
 string ndnfs::server::fs_prefix = "/ndn/broadcast/ndnfs";
 string ndnfs::server::logging_path = "";
 
-const int ndnfs::server::dir_type = 0;
-const int ndnfs::server::file_type = 1;
-
 const int ndnfs::server::seg_size = 8192;
 const int ndnfs::server::seg_size_shift = 13;
 

@@ -9,5 +9,7 @@ message FileInfo
   
   // Mime type is available in name branch <file>/_meta/mime_type, and sent along with other attributes
   optional string mimetype = 4;
+  // For files other than regular, for example, symlink, this field should be filled.
+  optional int32 type = 5;
 }
 

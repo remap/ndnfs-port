@@ -26,6 +26,7 @@
 #include "version.h"
 
 #include "mime-inference.h"
+#include "file-type.h"
 
 int ndnfs_open(const char *path, struct fuse_file_info *fi);
 
