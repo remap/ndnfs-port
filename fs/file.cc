@@ -494,7 +494,7 @@ int ndnfs_link(const char *from, const char *to)
 
 /**
  * Right now, rename changes every entry related with the content, without creating new version
- * Rename would also require the resigning of everything...
+ * TODO: Rename would require checking if rename target (avoid collision error in db) already exists, and resigning of everything...
  * Rename should better work as a duplicate.
  */
 int ndnfs_rename(const char *from, const char *to)
@@ -509,6 +509,28 @@ int ndnfs_rename(const char *from, const char *to)
 
   if (res != SQLITE_OK && res != SQLITE_DONE) {
 	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_system error. " << res << endl;
+	return res;
+  }
+  sqlite3_finalize (stmt);
+
+  sqlite3_prepare_v2(db, "UPDATE file_versions SET PATH = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, from, -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+
+  if (res != SQLITE_OK && res != SQLITE_DONE) {
+	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_versions error. " << res << endl;
+	return res;
+  }
+  sqlite3_finalize (stmt);
+
+  sqlite3_prepare_v2(db, "UPDATE file_segments SET PATH = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, from, -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
+
+  if (res != SQLITE_OK && res != SQLITE_DONE) {
+	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_segments error. " << res << endl;
 	return res;
   }
   sqlite3_finalize (stmt);
