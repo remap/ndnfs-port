@@ -472,6 +472,9 @@ int ndnfs_symlink(const char *from, const char *to)
   return 0;
 }
 
+/**
+ * TODO: double check the behavior of link
+ */
 int ndnfs_link(const char *from, const char *to)
 {
   int res;
@@ -489,10 +492,27 @@ int ndnfs_link(const char *from, const char *to)
   return 0;
 }
 
+/**
+ * Right now, rename changes every entry related with the content, without creating new version
+ * Rename would also require the resigning of everything...
+ * Rename should better work as a duplicate.
+ */
 int ndnfs_rename(const char *from, const char *to)
 {
-  int res;
+  int res = 0;
+  sqlite3_stmt *stmt;
+  
+  sqlite3_prepare_v2(db, "UPDATE file_system SET PATH = ? WHERE path = ?;", -1, &stmt, 0);
+  sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, from, -1, SQLITE_STATIC);
+  sqlite3_step(stmt);
 
+  if (res != SQLITE_OK && res != SQLITE_DONE) {
+	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_system error. " << res << endl;
+	return res;
+  }
+  sqlite3_finalize (stmt);
+    
   char full_path_from[PATH_MAX];
   abs_path(full_path_from, from);
   
@@ -500,6 +520,8 @@ int ndnfs_rename(const char *from, const char *to)
   abs_path(full_path_to, to);
   
   res = rename(full_path_from, full_path_to);
+  
+  FILE_LOG(LOG_ERROR) << "ndnfs_rename: rename should trigger resign of everything, which is not yet implemented" << endl;
   if (res == -1)
 	return -errno;
 
