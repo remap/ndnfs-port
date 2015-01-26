@@ -535,6 +535,7 @@ int ndnfs_rename(const char *from, const char *to)
   }
   sqlite3_finalize (stmt);
     
+  // actual renaming
   char full_path_from[PATH_MAX];
   abs_path(full_path_from, from);
   

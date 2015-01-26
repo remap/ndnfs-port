@@ -344,8 +344,10 @@ int sendFileAttr(const string& path, const string& mimeType, int version, FileTy
   
   int total_seg = 0;
   int file_size = 0;
-  // only regular files will get size-read; 
-  // right now, browser plugin still asks for the first segment, even if it's symlink
+  
+  // only regular files will get size-read, 
+  // types such as symlink would bring back a size of zero; 
+  // TODO: right now, browser plugin still asks for the first segment, even if it's symlink
   if (type == REGULAR) {
     readFileSize(path, file_size, total_seg);
   } else {
