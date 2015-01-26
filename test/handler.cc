@@ -95,7 +95,6 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 
 void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data) {
   Name name = data->getName();
-  cout << "FinalBlockId : " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
   
   if (doVerification_) {
 	keyChain_.verifyData
@@ -107,7 +106,9 @@ void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, c
 
   if (fileName_ != "") {
 	ofstream writeFile;
-	writeFile.open (fileName_);
+	// TODO: in case of out of order delivery, we should write to the file by offset.
+	writeFile.open (fileName_, std::ofstream::out | std::ofstream::app);
+	cout << "onFileData: Received content. Size " << data->getContent().size() << endl;
 	for (size_t i = 0; i < data->getContent().size(); ++i) {
 	  writeFile << (*data->getContent())[i];
 	}
