@@ -470,6 +470,9 @@ int sendDirAttr(string path, Transport& transport)
   
   if (count > 0) {
     dataSize = infoa.ByteSize();
+    if (dataSize > ndnfs::server::seg_size) {
+      FILE_LOG(LOG_ERROR) << "sendDirAttr: Dir attr is larger than a segment; support for this is not yet implemented." << endl;
+    }
 	wireData = new char[dataSize];
 	infoa.SerializeToArray(wireData, dataSize);
   }

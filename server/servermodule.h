@@ -87,6 +87,7 @@ readFileSize(std::string path, int& file_size, int& total_seg);
  * sendDirAttr tries to decide if path is a directory, if so, it reads the directory, 
  * and replies with everything in it, formatted with dir.proto, through transport.
  * (Including '.' and '..')
+ *  TODO: right now, directory size if assumed to be within one segment, which should not be the case.
  * @param path String path of the directory
  * @param transport The transport from which to send the dir info
  */
