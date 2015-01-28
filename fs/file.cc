@@ -418,12 +418,14 @@ int ndnfs_readlink(const char *path, char *buf, size_t size)
 /**
  * symlink handling inserts file and version entry for the symlink name, 
  * but does not create segments entry;
- * TODO: this requires more thinking.
+ * TODO: file_segments entries should be linked to another name in file_system;
+ * Symlink, as well as hard links will not be available for remote fetching.
  */
 int ndnfs_symlink(const char *from, const char *to)
 {
   int res;
   
+  /*
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "SELECT * FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, to, -1, SQLITE_STATIC);
@@ -458,6 +460,7 @@ int ndnfs_symlink(const char *from, const char *to)
   
   sqlite3_step(stmt);
   sqlite3_finalize(stmt);  
+  */
   
   char full_path_from[PATH_MAX];
   abs_path(full_path_from, from);
@@ -473,12 +476,15 @@ int ndnfs_symlink(const char *from, const char *to)
 }
 
 /**
- * TODO: double check the behavior of link
+ * Link is called on the creation of hard links
+ * TODO: file_segments entries should be linked to another name in file_system;
+ * This is not implemented and hard links will not be available for remote fetching.
  */
 int ndnfs_link(const char *from, const char *to)
 {
   int res;
   
+  // actual linking of paths
   char full_path_from[PATH_MAX];
   abs_path(full_path_from, from);
   

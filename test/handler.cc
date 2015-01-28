@@ -117,7 +117,6 @@ void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, c
     cout << "Local file writing skipped." << endl;
   }
   
-  
   currentSegment_ = (int)(name.rbegin()->toSegment());
   currentSegment_++;  // segments are zero-indexed
   if (currentSegment_ == totalSegment_) {
