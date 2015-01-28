@@ -155,14 +155,24 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   Name interest_name = interest->getName();
   int ret = parseName(interest_name, version, seg, path);
 
-  // The client is asking for a segment of a file.
+  // Selectors handling
+  int childSelector = interest->getChildSelector();
+  int minSuffixComponents = interest->getMinSuffixComponents();
+  int maxSuffixComponents = interest->getMaxSuffixComponents();
+  Exclude exclude = interest->getExclude();
+  
+  if (childSelector != -1 || minSuffixComponents != -1 || maxSuffixComponents != -1 || exclude.size() != 0) {
+    FILE_LOG(LOG_ERROR) << "onInterest: child selectors, min/maxSuffixComponents or excludes are not supported in current implementation." << endl;
+  }
+  
+  // The client is asking for a segment of a file; selectors and excludes are ignored in this case.
   if (ret == 3) {
 	ret = sendFileContent(interest_name, path, version, seg, transport);
     if (ret != -1) {
-      
+      FILE_LOG(LOG_ERROR) << "onInterest: sendFileContent returned failure for interest name. " << interest_name.toUri() << endl;
     }
   }
-  // The client is asking for a certain version of a file
+  // The client is asking for a certain version of a file. Selectors and excludes are ignored in this case.
   else if (ret == 2) {
     // even though client is only asking for a version of file, we still query if that file exists in file_system database,
     // and extracts mime-type and file-type from database.
@@ -185,7 +195,14 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	  return ;
 	}
   }
-  // The client is asking for 'generic' info about a file/folder in ndnfs
+  // The client is asking for 'generic' info about a file/folder in ndnfs; 
+  // TODO: In case of file, selectors and excludes are ignored since older versions are not stored.
+  // One way to implement selectors in case of folder listing would be:
+  //  Excludes, if specified, prevent the matching file/folders in the folder in question from getting returned.
+  //  Child selectors, if specified, causes the returned listing only contains the leftmost/rightmost child.
+  //  Min/MaxSuffixComponents, if specified, causes the server to look for first piece of matching file/directory in any subfolders. 
+  // Concerns: If implemented like this, the behavior may confuse nfd,
+  //  since here child selectors and excludes doesn't have impact on the name of the content returned.
   else if (ret == 1) {
 	sqlite3_stmt *stmt;
 	sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);

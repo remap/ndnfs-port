@@ -97,11 +97,14 @@ int
 sendFileMeta(ndn::Name interest_name, std::string path, int version, ndn::Transport& transport);
 
 /**
- * sendFileAttr tries
+ * sendFileAttr checks if entry exists in file_versions table, and returns the protobuf encoded attributes if so.
  */
 int 
 sendFileAttr(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Transport& transport);
 
+/**
+ * sendFileContent checks if entry exists in file_segments table, and returns the assembled data packet if so.
+ */
 int 
 sendFileContent(ndn::Name interest_name, std::string path, int version, int seg, ndn::Transport& transport);
 
