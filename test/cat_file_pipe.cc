@@ -63,7 +63,7 @@ void onMetaData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
     if (marker == "%C1.FS.dir") {
         cerr << "Requested name correspondes to a directory." << endl;
     } else if (marker == "%C1.FS.file") {
-        ndnfs::FileInfo infof;
+        Ndnfs::FileInfo infof;
         if (infof.ParseFromArray(content.buf(), content.size()) && infof.IsInitialized()) {
             cout << "File metadata received." << endl;
             cout << "  name:  " << data_name.toUri() << endl;

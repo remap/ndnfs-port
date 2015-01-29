@@ -36,12 +36,12 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
   const Name::Component& comp = data_name.get(data_name.size() - 2);
   string marker = comp.toEscapedString();
   if (marker == "%C1.FS.dir") {
-	ndnfs::DirInfoArray infoa;
+	Ndnfs::DirInfoArray infoa;
 	if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
 	  cout << "This is a directory:" << endl;
 	  int n = infoa.di_size();
 	  for (int i = 0; i<n; i++) {
-		const ndnfs::DirInfo &info = infoa.di(i);
+		const Ndnfs::DirInfo &info = infoa.di(i);
 		cout << info.path();
 		if (info.type() == 0)
 		  cout << ":    DIR" << endl;
@@ -57,7 +57,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 	}
   }
   else if (marker == "%C1.FS.file") {
-	ndnfs::FileInfo infof;
+	Ndnfs::FileInfo infof;
 	if(infof.ParseFromArray(content.buf(),content.size()) && infof.IsInitialized()){
 	  cout << "This is a file" << endl;
 	  cout << "name:  " << data->getName().toUri() << endl;

@@ -357,7 +357,7 @@ int sendFileAttr(const string& path, const string& mimeType, int version, FileTy
   }
   sqlite3_finalize(stmt);
   
-  ndnfs::FileInfo infof;
+  Ndnfs::FileInfo infof;
   
   int total_seg = 0;
   int file_size = 0;
@@ -414,7 +414,7 @@ int sendDirAttr(string path, Transport& transport)
   }
   
   int count = 0;
-  ndnfs::DirInfoArray infoa;
+  Ndnfs::DirInfoArray infoa;
   struct dirent *de;
   
   struct stat st;
@@ -422,7 +422,7 @@ int sendDirAttr(string path, Transport& transport)
   int mtime = st.st_mtime;
   
   while ((de = readdir(dp)) != NULL) {
-	ndnfs::DirInfo *infod = infoa.add_di();
+	Ndnfs::DirInfo *infod = infoa.add_di();
 	
 	lstat(de->d_name, &st);
 	
@@ -472,6 +472,7 @@ int sendDirAttr(string path, Transport& transport)
     dataSize = infoa.ByteSize();
     if (dataSize > ndnfs::server::seg_size) {
       FILE_LOG(LOG_ERROR) << "sendDirAttr: Dir attr is larger than a segment; support for this is not yet implemented." << endl;
+      return -1;
     }
 	wireData = new char[dataSize];
 	infoa.SerializeToArray(wireData, dataSize);
@@ -485,8 +486,8 @@ int sendDirAttr(string path, Transport& transport)
   
   data.setContent((uint8_t*)wireData, dataSize);
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
-  transport.send(*data.wireEncode());
-  
+  transport.send(*data.wireEncode());  
+
   FILE_LOG(LOG_DEBUG) << "sendDirAttr: Data returned with name: " << name.toUri() << endl;
   
   delete wireData;
