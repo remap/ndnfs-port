@@ -230,6 +230,14 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 
 int sendFileContent(Name interest_name, string path, int version, int seg, Transport& transport)
 {
+  Data data(interest_name);
+  
+  // segment is blank, so the first piece of matching name (segment 0) is returned; 
+  if (seg == -1) {
+	data.getName().appendSegment(0);
+	seg = 0;
+  }
+  
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT path, version, segment, signature FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
@@ -250,8 +258,6 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   Sha256WithRsaSignature signature;
   
   signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
-  
-  Data data(interest_name);
   
   data.setSignature(signature);
 
@@ -291,11 +297,6 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   }
   
   if (actual_len > 0) {
-	// segment is blank, so the first piece of matching name (segment 0) is returned; 
-	if (seg == -1) {
-	  data.getName().appendSegment(0);
-	}
-  
 	data.setContent((uint8_t*)output, actual_len);
   
 	Blob encodedData = data.wireEncode();
