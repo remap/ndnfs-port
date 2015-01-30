@@ -235,6 +235,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   // segment is blank, so the first piece of matching name (segment 0) is returned; 
   if (seg == -1) {
 	data.getName().appendSegment(0);
+	cout << data.getName().toUri() << endl;
 	seg = 0;
   }
   
@@ -301,9 +302,9 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   
 	Blob encodedData = data.wireEncode();
 	transport.send(*encodedData);
-	FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << interest_name.toUri() << endl;
+	FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << data.getName().toUri() << endl;
   } else {
-	FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << interest_name.toUri() << endl;
+	FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << data.getName().toUri() << endl;
   }
   
   delete output;
