@@ -188,7 +188,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	// In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
 	// Since meta component "C1.FS.file" is not present.
 	// TODO: here we should process interest selectors; and adapt for empty files.
-	ret = sendFileContent(interest_name, path, version, 0, transport);
+	ret = sendFileContent(interest_name, path, version, -1, transport);
 	if (ret == -1) {
 	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
 	  return ;
@@ -251,8 +251,8 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   
   signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
   
-  Data data;
-  data.setName(interest_name);
+  Data data(interest_name);
+  
   data.setSignature(signature);
 
   // When assembling the data packet, finalblockid should be put into each segment,
@@ -290,12 +290,20 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
 	return -1;
   }
   
-  data.setContent((uint8_t*)output, actual_len);
+  if (actual_len > 0) {
+	// segment is blank, so the first piece of matching name (segment 0) is returned; 
+	if (seg == -1) {
+	  data.getName().appendSegment(0);
+	}
   
-  Blob encodedData = data.wireEncode();
-  transport.send(*encodedData);
+	data.setContent((uint8_t*)output, actual_len);
   
-  FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << interest_name.toUri() << endl;
+	Blob encodedData = data.wireEncode();
+	transport.send(*encodedData);
+	FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << interest_name.toUri() << endl;
+  } else {
+	FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << interest_name.toUri() << endl;
+  }
   
   delete output;
   return actual_len;
