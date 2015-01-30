@@ -53,13 +53,13 @@ void onRegisterFailed(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix);
  * Parse returns an integer, signifying the type of request.
  *
  * Proposed patterns:
- * <root>/<path>: 1, check if <path> exists either as a file, or a directory;
+ * <root>/<path>/[C1.FS.FILE | C1.FS.DIR]/[version]: 1, check if <path> exists either as a file, or a directory;
  *   return name: <root>/<path>/C1.FS.FILE/<version>, content: file.proto encoded; if file
  *   return name: <root>/<path>/C1.FS.DIR/<version>, content: dir.proto encoded; if folder
  * <root>/<path>/<version>: 2, check if <path>/<version> exists in db, should it work only with file, or file/folder both?
  * <root>/<path>/<version>/<segment>: 3, check if <path>/<version>/<segment> exists as a segment of a file
  *   return name: same, content: actual file content assembled with signature
- * <root>/<path>/<version>/_meta: 4, look for the meta of a certain version of a file
+ * 
  * Otherwise return -1, we received a name that does not fit in any of these patterns.
  *
  * The difference with original implementation here would be, 
@@ -84,7 +84,7 @@ void
 readFileSize(std::string path, int& file_size, int& total_seg);
 
 /**
- * sendDirAttr tries to decide if path is a directory, if so, it reads the directory, 
+ * sendDirMeta tries to decide if path is a directory, if so, it reads the directory, 
  * and replies with everything in it, formatted with dir.proto, through transport.
  * (Including '.' and '..')
  *  TODO: right now, directory size if assumed to be within one segment, which should not be the case.
@@ -92,16 +92,13 @@ readFileSize(std::string path, int& file_size, int& total_seg);
  * @param transport The transport from which to send the dir info
  */
 int 
-sendDirAttr(std::string path, ndn::Transport& transport);
-
-int 
-sendFileMeta(ndn::Name interest_name, std::string path, int version, ndn::Transport& transport);
+sendDirMeta(std::string path, ndn::Transport& transport);
 
 /**
- * sendFileAttr checks if entry exists in file_versions table, and returns the protobuf encoded attributes if so.
+ * sendFileMeta checks if entry exists in file_versions table, and returns the protobuf encoded attributes if so.
  */
 int 
-sendFileAttr(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Transport& transport);
+sendFileMeta(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Transport& transport);
 
 /**
  * sendFileContent checks if entry exists in file_segments table, and returns the assembled data packet if so.

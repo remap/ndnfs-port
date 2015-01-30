@@ -65,6 +65,7 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
   int ret = -1;
   version = -1;
   seg = -1;
+  int hasMeta = 0;
   
   // this should be changed to using toVersion, not using the the octets directly in case
   // of future changes in naming conventions...
@@ -97,25 +98,19 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
 	  }
 	}
 	else if (marker == 0xC1) {
-	  continue;
+	  // Doesn't make sense for version and segment to come before C1.FS.File
+	  if (version != -1 || seg != -1) {
+	    return -1;
+	  } else {
+	    hasMeta = 1;
+	  }
 	}
 	else {
 	  string component = iter->toEscapedString();
 	  
-	  // Deciding if this interest is asking for meta_info
-	  // If the component comes after <version> but not <segment>, it is interpreted 
-	  // as either a meta request, or an invalid interest.
-	  if (version != -1 && seg == -1) {
-		if (component == NdnfsNamespace::metaComponentName_) {
-		  ret = 4;
-		}
-		else {
-		  return -1;
-		}
-	  }
 	  // If the component comes before <version> and <segment>, it is interpreted as
 	  // part of the path.
-	  else if (version == -1 && seg == -1) {
+	  if (version == -1 && seg == -1) {
 		oss << "/" << component;
 	  }
 	  // If the component comes after <version>/<segment>, it is considered invalid
@@ -130,19 +125,19 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
 
   path = path.substr(ndnfs::server::fs_prefix.length());
   if (path == "")
-	  path = string("/");
+	path = string("/");
 	 
   // has <version>/<segment> 
   if (version != -1 && seg != -1) {
-	  ret = 3;
+	ret = 3;
   }
-  // has <version>, but not _meta
-  else if (version != -1 && ret != 4) {
-	  ret = 2;
+  // has <version>, but not meta component
+  else if (version != -1 && !hasMeta) {
+	ret = 2;
   }
-  // has nothing
-  else if (version == -1) {
-	  ret = 1;
+  // has meta component as well as version, or has no version. 
+  else {
+	ret = 1;
   }
   return ret;
 }
@@ -168,11 +163,11 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   // The client is asking for a segment of a file; selectors and excludes are ignored in this case.
   if (ret == 3) {
 	ret = sendFileContent(interest_name, path, version, seg, transport);
-    if (ret != -1) {
+    if (ret == -1) {
       FILE_LOG(LOG_ERROR) << "onInterest: sendFileContent returned failure for interest name. " << interest_name.toUri() << endl;
     }
   }
-  // The client is asking for a certain version of a file. Selectors and excludes are ignored in this case.
+  // The client is asking for a certain version of a file without meta component. Selectors and excludes should not be ignored in this case.
   else if (ret == 2) {
     // even though client is only asking for a version of file, we still query if that file exists in file_system database,
     // and extracts mime-type and file-type from database.
@@ -189,7 +184,11 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
 	enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
 	sqlite3_finalize(stmt);
-	ret = sendFileAttr(path, "", version, fileType, transport);
+	
+	// In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
+	// Since meta component "C1.FS.file" is not present.
+	// TODO: here we should process interest selectors; and adapt for empty files.
+	ret = sendFileContent(interest_name, path, version, 0, transport);
 	if (ret == -1) {
 	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
 	  return ;
@@ -212,7 +211,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	  sqlite3_finalize(stmt);
 	  
 	  // It may not be a file, but a folder instead, which is not stored in database
-	  ret = sendDirAttr(path, transport);
+	  ret = sendDirMeta(path, transport);
 	}
 	else {
 	  version = sqlite3_column_int(stmt, 0);
@@ -223,53 +222,10 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	  enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
 	  
 	  sqlite3_finalize(stmt);
-	  ret = sendFileAttr(path, mimeType, version, fileType, transport);
+	  ret = sendFileMeta(path, mimeType, version, fileType, transport);
     }
     return;
   }
-  // The client is asking for the meta_info of a file
-  else if (ret == 4) {
-    ret = sendFileMeta(interest_name, path, version, transport);
-    return;
-  }
-}
-
-int sendFileMeta(Name interest_name, string path, int version, Transport& transport)
-{
-  sqlite3_stmt *stmt;
-  sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type FROM file_system WHERE path = ?", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-  if (sqlite3_step(stmt) != SQLITE_ROW) {
-	FILE_LOG(LOG_DEBUG) << "sendFileMeta: no such file/directory found in ndnfs: " << path << endl;
-	sqlite3_finalize(stmt);
-	return -1;
-  }
-  
-  // right now, if the requested path is a file, whenever meta_info is asked, the server replies with 
-  // name: <received name>/<mime_type>, content: mime_type	
-  // if the requested path is a folder, the server does not reply with anything	
-  string mimeType = string((char *)sqlite3_column_text(stmt, 1));
-  
-  sqlite3_finalize(stmt);
-  sqlite3_prepare_v2(ndnfs::server::db, "SELECT path, version FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
-  sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-  sqlite3_bind_int(stmt, 2, version);
-  
-  if (sqlite3_step(stmt) != SQLITE_ROW) {
-	sqlite3_finalize(stmt);
-	return -1;
-  }
-	
-  Name name(interest_name);
-  name.append(NdnfsNamespace::mimeComponentName_);
-  
-  Data data(name);
-  data.setContent((const uint8_t *)&mimeType[0], mimeType.size());
-  ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
-  transport.send(*data.wireEncode());
-  
-  sqlite3_finalize(stmt);
-  return 0;
 }
 
 int sendFileContent(Name interest_name, string path, int version, int seg, Transport& transport)
@@ -345,7 +301,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   return actual_len;
 }
 
-int sendFileAttr(const string& path, const string& mimeType, int version, FileType type, Transport& transport) 
+int sendFileMeta(const string& path, const string& mimeType, int version, FileType type, Transport& transport) 
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
@@ -397,13 +353,13 @@ int sendFileAttr(const string& path, const string& mimeType, int version, FileTy
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());
   
-  FILE_LOG(LOG_DEBUG) << "sendFileAttr: Data returned with name: " << name.toUri() << endl;
+  FILE_LOG(LOG_DEBUG) << "sendFileMeta: Data returned with name: " << name.toUri() << endl;
   
   delete wireData;
   return 0;
 }
 
-int sendDirAttr(string path, Transport& transport) 
+int sendDirMeta(string path, Transport& transport) 
 {
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, path.c_str());
@@ -470,7 +426,7 @@ int sendDirAttr(string path, Transport& transport)
   if (count > 0) {
     dataSize = infoa.ByteSize();
     if (dataSize > ndnfs::server::seg_size) {
-      FILE_LOG(LOG_ERROR) << "sendDirAttr: Dir attr is larger than a segment; support for this is not yet implemented." << endl;
+      FILE_LOG(LOG_ERROR) << "sendDirMeta: Dir attr is larger than a segment; support for this is not yet implemented." << endl;
       return -1;
     }
 	wireData = new char[dataSize];
@@ -487,7 +443,7 @@ int sendDirAttr(string path, Transport& transport)
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());  
   
-  FILE_LOG(LOG_DEBUG) << "sendDirAttr: Data returned with name: " << name.toUri() << ". Data size: " << dataSize << endl;
+  FILE_LOG(LOG_DEBUG) << "sendDirMeta: Data returned with name: " << name.toUri() << ". Data size: " << dataSize << endl;
   
   delete wireData;
   return 0;
