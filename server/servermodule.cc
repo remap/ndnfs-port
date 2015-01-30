@@ -486,8 +486,8 @@ int sendDirAttr(string path, Transport& transport)
   data.setContent((uint8_t*)wireData, dataSize);
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());  
-
-  FILE_LOG(LOG_DEBUG) << "sendDirAttr: Data returned with name: " << name.toUri() << endl;
+  
+  FILE_LOG(LOG_DEBUG) << "sendDirAttr: Data returned with name: " << name.toUri() << ". Data size: " << dataSize << endl;
   
   delete wireData;
   return 0;

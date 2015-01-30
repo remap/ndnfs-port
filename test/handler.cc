@@ -42,11 +42,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 	  int n = infoa.di_size();
 	  for (int i = 0; i<n; i++) {
 		const Ndnfs::DirInfo &info = infoa.di(i);
-		cout << info.path();
-		if (info.type() == 0)
-		  cout << ":    DIR" << endl;
-		else
-		  cout << ":    FILE" << endl;
+		cout << info.path() << endl;
 	  }
 	  if (fetchFile_) {
 		cout << "Cannot fetch a directory." << endl;
