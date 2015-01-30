@@ -463,8 +463,7 @@ int sendDirAttr(string path, Transport& transport)
   Blob ndnfsDirComponent = Name::fromEscapedString(NdnfsNamespace::dirComponentName_);
   name.append(ndnfsDirComponent).appendVersion(mtime);
 
-  Data data;
-  data.setName(name);
+  Data data(name);
   char *wireData;
   int dataSize = 0;
   
