@@ -9,6 +9,7 @@ public:
   static const std::string mimeComponentName_;
   static const std::string fileComponentName_;
   static const std::string dirComponentName_;
+  static const std::string ContentMetaString_;
 };
 
 #endif

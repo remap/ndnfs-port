@@ -369,13 +369,30 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   return 0;
 }
 
+bool hasEnding(string const &fullString, string const &ending)
+{
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 int sendDirMetaBrowserFriendly(string path, Transport& transport)
 {
+  string queryPath = path;
+  
+  // hack for "back" button, confusing when an actual dir.html is present.
+  if (hasEnding(path, NdnfsNamespace::ContentMetaString_)) {
+    queryPath = path.substr(0, path.size() - NdnfsNamespace::ContentMetaString_.size());
+  }
+  
   char dir_path[PATH_MAX] = "";
-  abs_path(dir_path, path.c_str());
+  abs_path(dir_path, queryPath.c_str());
 	
   DIR *dp = opendir(dir_path);
   if (dp == NULL) {
+    FILE_LOG(LOG_DEBUG) << "sendDirMeta: no such folder found: " << queryPath << endl;
 	return -1;
   }
   
@@ -418,13 +435,13 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
 	}
 	if (strcmp(de->d_name, ".")) {
       if (strcmp(de->d_name, "..") == 0) {
-		if (path != "/") {
+		if (queryPath != "/") {
 		  content += "<a href=\"";
 		  content += "../\">[Parent directory]</a>";
 		  content += "<br>";
 		}
       } else {
-		content += "<a href=\"";
+		content += "<a href=\"./";
         content += string(de->d_name);
         content += "\">" + string(de->d_name) + "</a>";
 		content += "<br>";
@@ -459,6 +476,7 @@ int sendDirMeta(string path, Transport& transport)
 	
   DIR *dp = opendir(dir_path);
   if (dp == NULL) {
+    FILE_LOG(LOG_DEBUG) << "sendDirMeta: no such folder found: " << path << endl;
 	return -1;
   }
   
