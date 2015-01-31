@@ -94,6 +94,9 @@ readFileSize(std::string path, int& file_size, int& total_seg);
 int 
 sendDirMeta(std::string path, ndn::Transport& transport);
 
+int 
+sendDirMetaBrowserFriendly(std::string path, ndn::Transport& transport);
+
 /**
  * sendFileMeta checks if entry exists in file_versions table, and returns the protobuf encoded attributes if so.
  */

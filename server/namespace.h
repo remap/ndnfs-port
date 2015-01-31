@@ -6,7 +6,6 @@
 class NdnfsNamespace
 {
 public:
-  static const std::string metaComponentName_;
   static const std::string mimeComponentName_;
   static const std::string fileComponentName_;
   static const std::string dirComponentName_;

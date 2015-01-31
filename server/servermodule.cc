@@ -211,7 +211,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
 	  sqlite3_finalize(stmt);
 	  
 	  // It may not be a file, but a folder instead, which is not stored in database
-	  ret = sendDirMeta(path, transport);
+	  ret = sendDirMetaBrowserFriendly(path, transport);
 	}
 	else {
 	  version = sqlite3_column_int(stmt, 0);
@@ -366,6 +366,89 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   FILE_LOG(LOG_DEBUG) << "sendFileMeta: Data returned with name: " << name.toUri() << endl;
   
   delete wireData;
+  return 0;
+}
+
+int sendDirMetaBrowserFriendly(string path, Transport& transport)
+{
+  char dir_path[PATH_MAX] = "";
+  abs_path(dir_path, path.c_str());
+	
+  DIR *dp = opendir(dir_path);
+  if (dp == NULL) {
+	return -1;
+  }
+  
+  int count = 0;
+  struct dirent *de;
+  
+  struct stat st;
+  lstat(dir_path, &st);
+  int mtime = st.st_mtime;
+  
+  string content = "<html><body>";
+  
+  while ((de = readdir(dp)) != NULL) {
+	lstat(de->d_name, &st);
+	
+	enum FileType fileType = REGULAR; 
+	switch (S_IFMT & st.st_mode) 
+	{
+	  case S_IFDIR: 
+		fileType = DIRECTORY;
+		break;
+	  case S_IFCHR:
+		fileType = CHARACTER_SPECIAL;
+		break;
+	  case S_IFREG: 
+		fileType = REGULAR;
+		break;
+	  case S_IFLNK: 
+		fileType = SYMBOLIC_LINK;
+		break;
+	  case S_IFSOCK: 
+		fileType = UNIX_SOCKET;
+		break;
+	  case S_IFIFO: 
+		fileType = FIFO_SPECIAL;
+		break;
+	  default:
+		fileType = REGULAR;
+		break;
+	}
+	if (strcmp(de->d_name, ".")) {
+      if (strcmp(de->d_name, "..") == 0) {
+		if (path != "/") {
+		  content += "<a href=\"";
+		  content += "../\">[Parent directory]</a>";
+		  content += "<br>";
+		}
+      } else {
+		content += "<a href=\"";
+        content += string(de->d_name);
+        content += "\">" + string(de->d_name) + "</a>";
+		content += "<br>";
+      }
+	}
+    count ++;
+  }
+  content += "</body></html>";
+  closedir(dp);
+  
+  Name name(ndnfs::server::fs_prefix);
+  name.append(Name(path));
+
+  Blob ndnfsDirComponent = Name::fromEscapedString(NdnfsNamespace::dirComponentName_);
+  name.append(ndnfsDirComponent).appendVersion(mtime);
+
+  Data data(name);
+  
+  data.setContent((const uint8_t *)&content[0], content.size());
+  ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
+  transport.send(*data.wireEncode());  
+  
+  FILE_LOG(LOG_DEBUG) << "sendDirMeta: Data returned with name: " << name.toUri() << endl;
+  
   return 0;
 }
 
