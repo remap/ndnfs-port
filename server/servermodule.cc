@@ -235,7 +235,6 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   // segment is blank, so the first piece of matching name (segment 0) is returned; 
   if (seg == -1) {
 	data.getName().appendSegment(0);
-	cout << data.getName().toUri() << endl;
 	seg = 0;
   }
   

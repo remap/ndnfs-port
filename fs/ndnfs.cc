@@ -23,7 +23,8 @@
 // so the fs should not use a different prefix, or all files before that prefix would become unsolicited data.
 
 // TODO:
-// 1. Asynchronous signing
+// 1. Truncate: file too large problem
+// 2. Text wrangler editing problem
 
 #include "ndnfs.h"
 #include "directory.h"

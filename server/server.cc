@@ -76,7 +76,8 @@ int main(int argc, char **argv) {
 	  break;
 	}
   }
-  
+
+ 
   pid_t pid, sid;
   pid = fork();
   if (pid < 0) {
