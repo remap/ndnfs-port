@@ -12,6 +12,12 @@
 
 #include <sqlite3.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <errno.h>
 
 // logger and file-type headers are shared by server and fs;
 #include "logger.h"

@@ -55,6 +55,68 @@ void usage() {
 }
 
 int main(int argc, char **argv) {
+  // Parse command parameters
+  int opt;
+  while ((opt = getopt(argc, argv, "p:d:f:l:")) != -1) {
+	switch (opt) {
+	case 'p':
+	  ndnfs::server::fs_prefix.assign(optarg);
+	  break;
+	case 'd':
+	  ndnfs::server::db_name.assign(optarg);
+	  break;
+	case 'f':
+	  ndnfs::server::fs_path.assign(optarg);
+	  break;
+	case 'l':
+	  ndnfs::server::logging_path.assign(optarg);
+	  break;
+	default:
+	  usage();
+	  break;
+	}
+  }
+  
+  pid_t pid, sid;
+  pid = fork();
+  if (pid < 0) {
+    cerr << "main: fork PID < 0" << endl;
+	exit(EXIT_FAILURE);
+  }
+  if (pid > 0) {
+    cerr << "main: daemonize start" << endl;
+	exit(EXIT_SUCCESS);
+  }
+
+  umask(0);
+  
+  // Set up logging
+  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
+  FILE* log_fd = fopen(ndnfs::server::logging_path.c_str(), "w" );
+  if (ndnfs::server::logging_path == "" || log_fd == NULL) {
+	Output2FILE::stream() = stdout;
+  } else {
+    Output2FILE::stream() = log_fd;
+  }
+  
+  FILE_LOG(LOG_DEBUG) << "Ndnfs-server logging." << endl;
+
+  sid = setsid();
+  if (sid < 0) {
+    cerr << "main: setsid sid < 0" << endl;
+	exit(EXIT_FAILURE);
+  }
+
+  if ((chdir("/")) < 0) {
+    cerr << "main: chdir failed." << endl;
+	exit(EXIT_FAILURE);
+  }
+
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+  // Actual ndnfs code
   // Initialize the keychain
   ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
   ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
@@ -76,38 +138,6 @@ int main(int argc, char **argv) {
   
   face.setCommandSigningInfo(*ndnfs::server::keyChain, ndnfs::server::certificateName);
   
-  int opt;
-  while ((opt = getopt(argc, argv, "p:d:f:l:")) != -1) {
-	switch (opt) {
-	case 'p':
-	  ndnfs::server::fs_prefix.assign(optarg);
-	  break;
-	case 'd':
-	  ndnfs::server::db_name.assign(optarg);
-	  break;
-	case 'f':
-	  ndnfs::server::fs_path.assign(optarg);
-	  break;
-	case 'l':
-	  ndnfs::server::logging_path.assign(optarg);
-	  break;
-	default:
-	  usage();
-	  break;
-	}
-  }
-
-  // log configuration
-  Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
-  FILE* log_fd = fopen(ndnfs::server::logging_path.c_str(), "w" );
-  if (ndnfs::server::logging_path == "" || log_fd == NULL) {
-	Output2FILE::stream() = stdout;
-  } else {
-    Output2FILE::stream() = log_fd;
-  }
-  
-  FILE_LOG(LOG_DEBUG) << "Ndnfs-server logging." << endl;
-
   if (sqlite3_open(ndnfs::server::db_name.c_str(), &ndnfs::server::db) == SQLITE_OK) {
 	FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
   } else {
@@ -129,7 +159,7 @@ int main(int argc, char **argv) {
   }
 
   FILE_LOG(LOG_DEBUG) << "main: server exit." << endl;
-
+  
   return 0;
 }
 
