@@ -381,9 +381,9 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
 {
   string queryPath = path;
   
-  // hack for "back" button, confusing when an actual dir.html is present.
-  if (hasEnding(path, NdnfsNamespace::ContentMetaString_)) {
-    queryPath = path.substr(0, path.size() - NdnfsNamespace::ContentMetaString_.size());
+  // hack for "back" button, confusing when an actual contentMetaString_ is present.
+  if (hasEnding(path, NdnfsNamespace::contentMetaString_)) {
+    queryPath = path.substr(0, path.size() - NdnfsNamespace::contentMetaString_.size());
   }
   
   char dir_path[PATH_MAX] = "";
@@ -440,7 +440,12 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
 		  content += "<br>";
 		}
       } else {
-		content += "<a href=\"./";
+        // Support for HTML5 <a> download attribute is assumed here.
+        // Theoretically content provider shouldn't specify how browser's going to handle the data?
+        // Processing for directories and file(mime) types.
+		content += "<a download=\"";
+		content += string(de->d_name);
+		content += "\" href=\"./";
         content += string(de->d_name);
         content += "\">" + string(de->d_name) + "</a>";
 		content += "<br>";
@@ -463,7 +468,7 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());  
   
-  FILE_LOG(LOG_DEBUG) << "sendDirMeta: Data returned with name: " << name.toUri() << endl;
+  FILE_LOG(LOG_DEBUG) << "sendDirMetaBrowserFriendly: Data returned with name: " << name.toUri() << endl;
   
   return 0;
 }
