@@ -435,9 +435,9 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
 	if (strcmp(de->d_name, ".")) {
       if (strcmp(de->d_name, "..") == 0) {
 		if (queryPath != "/") {
-		  content += "<a href=\"";
-		  content += "../\">[Parent directory]</a>";
-		  content += "<br>";
+		  content = "<br>" + content;
+		  content = "../\">[Parent directory]</a>" + content;
+		  content = "<a href=\"" + content;
 		}
       } else {
         // Support for HTML5 <a> download attribute is assumed here.
