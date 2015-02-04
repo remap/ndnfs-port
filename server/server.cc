@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
   face.registerPrefix(prefix_name, ::onInterest, ::onRegisterFailed);
   while (true) {
 	face.processEvents();
-	usleep (10000);
+	usleep (20);
   }
 
   FILE_LOG(LOG_DEBUG) << "main: server exit." << endl;
