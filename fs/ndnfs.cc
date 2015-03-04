@@ -200,7 +200,7 @@ void abs_path(char *dest, const char *path)
 
 void usage()
 {
-  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] [-o prefix=\"prefix\"]" << endl;
+  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] [-o prefix=\"prefix\"] [-o log=\"log file path\"]" << endl;
   return;
 }
 
