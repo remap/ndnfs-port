@@ -76,7 +76,7 @@ will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs
 To access NDNFS data remotely, please use [NDN-JS Firefox addon](https://github.com/named-data/ndn-js/blob/master/ndn-protocol.xpi?raw=true), preferably [experimental addon](https://github.com/zhehaowang/ndn-js/blob/plugin-update/ndn-protocol.xpi?raw=true) with adaptations made specific for ndnfs; 
 Or a built-in client in tests.
 
-Instructions for Firefox addon:
+**Instructions for Firefox addon:**
 * Run nfd locally;
 * Set the Firefox addon's hub to localhost if it's not already localhost;
 * nfdc to the host of ndnfs-server or ndn testbed (can be localhost as well, in which case nfdc won't be needed);
@@ -86,7 +86,7 @@ Right now, Firefox addon will try to infer the mimetype of the file based on ext
 
 Default behavior For NDNFS content with unknown mimetype is save as file.
 
-Instructions for client application:
+**Instructions for client application:**
 * Run nfd locally;
 * Run client application;
 <pre>
