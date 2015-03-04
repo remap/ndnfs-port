@@ -37,7 +37,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
   const Name& data_name = data->getName();
   Name::Component comp = data_name.get(data_name.size() - 2);
   string marker = comp.toEscapedString();
-  if (marker == NdnfsNamespace::fileComponentName_) {
+  if (marker == NdnfsNamespace::dirComponentName_) {
     Ndnfs::DirInfoArray infoa;
     if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
       cout << "This is a directory:" << endl;
