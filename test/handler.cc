@@ -102,7 +102,15 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
     }
     
     Name modifiedInterestName(interest->getName());
-    modifiedInterestName.append(Name::fromEscapedString(NdnfsNamespace::fileComponentName_));
+    
+    if (data->getName().size() > interest->getName().size() + 2) {
+      // this is more likely a dir interest
+      modifiedInterestName.append(Name::fromEscapedString(NdnfsNamespace::contentMetaString_));
+    } else {
+      // this is more likely a file interest, since data.name <= interest.name + [version] + [segment]
+      modifiedInterestName.append(Name::fromEscapedString(NdnfsNamespace::fileComponentName_));
+    }
+    
     Interest modifiedInterest(modifiedInterestName);
     
     face_.expressInterest
