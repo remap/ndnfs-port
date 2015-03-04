@@ -182,6 +182,7 @@ static struct fuse_operations ndnfs_fs_ops;
 struct ndnfs_config {
   char *prefix;
   char *log_path;
+  char *db_path;
 };
 
 #define NDNFS_OPT(t, p, v) { t, offsetof(struct ndnfs_config, p), v }
@@ -189,6 +190,7 @@ struct ndnfs_config {
 static struct fuse_opt ndnfs_opts[] = {
   NDNFS_OPT("prefix=%s", prefix, 0),
   NDNFS_OPT("log=%s", log_path, 1),
+  NDNFS_OPT("db=%s", db_path, 2),
   FUSE_OPT_END
 };
 
@@ -200,7 +202,7 @@ void abs_path(char *dest, const char *path)
 
 void usage()
 {
-  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] [-o prefix=\"prefix\"] [-o log=\"log file path\"]" << endl;
+  cout << "Usage: ./ndnfs -s [actual folder directory (where files are stored in local file system)] [mount point directory] [-o prefix=\"prefix\"] [-o log=\"log file path\"] [-o db=\"database file path\"]" << endl;
   return;
 }
 
@@ -281,6 +283,13 @@ int main(int argc, char **argv)
     ndn::Name interestBaseName(conf.prefix);
     ndnfs::global_prefix = interestBaseName.toUri();
   }
+  
+  if (conf.db_path != NULL) {
+    db_name = conf.db_path;
+  }
+  
+  cout << "NDNFS: prefix " << ndnfs::global_prefix << endl;
+  cout << "NDNFS: database file " << db_name << endl;
   
   Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
   if (conf.log_path != NULL) {
