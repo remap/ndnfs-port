@@ -33,7 +33,7 @@ Handler::~Handler() {
 void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, const ptr_lib::shared_ptr<Data>& data) {
   const Blob& content = data->getContent();
   const Name& data_name = data->getName();
-  const Name::Component& comp = data_name.get(data_name.size() - 2);
+  Name::Component comp = data_name.get(data_name.size() - 2);
   string marker = comp.toEscapedString();
   if (marker == "%C1.FS.dir") {
 	Ndnfs::DirInfoArray infoa;
@@ -49,7 +49,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 	  }
 	}
 	else{
-	  cerr << "protobuf error" << endl;
+	  cerr << "Protobuf decoding error" << endl;
 	}
   }
   else if (marker == "%C1.FS.file") {
@@ -78,12 +78,38 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 	  }
 	}
 	else{
-	  cerr << "protobuf error" << endl;
+	  cerr << "Protobuf decoding error" << endl;
 	}
   }
   else {
-	cout << "data: " << string((char*)content.buf(), content.size()) << endl;
-	cout << "fbi: " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
+    // We could be receiving only a segment of the data, 
+    // which is a problem with the current namespace design, since the longest matching piece of data always gets returned.
+    
+    // A quick hack would be to manually append file component to the interest sent, if it's not already there.
+    // The correct solution would be redesigning the namespace for separating <meta> and <folder structure> branch.
+    string marker = comp.toEscapedString();
+    
+    for (int i = 0; i < data_name.size(); i++) {
+      comp = data_name.get(i);
+      marker = comp.toEscapedString();
+      if (marker == "%C1.FS.file" || marker == "%C1.FS.dir") {
+        cout << "Received data that cannot be handled; Name: " << data->getName().toUri() << endl;
+        done_ = true;
+        return;
+      }
+    }
+    
+    Name modifiedInterestName(interest->getName());
+    modifiedInterestName.append(Name::fromEscapedString("%C1.FS.file"));
+    Interest modifiedInterest(modifiedInterestName);
+    
+    face_.expressInterest
+		  (modifiedInterest, bind(&Handler::onAttrData, this, _1, _2), 
+		   bind(&Handler::onTimeout, this, _1));
+    
+    cout << "Tried adding file component marker to given interest; Name: " << modifiedInterest.getName().toUri() << endl;
+    
+    return;
   }
 
   done_ = true;
