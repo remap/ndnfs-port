@@ -269,7 +269,7 @@ int main(int argc, char **argv)
   if (ndnfs::root_path.back() == '/') {
     ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
   }
-   
+  
   // uid and gid will be set to that of the user who starts the fuse process
   ndnfs::user_id = getuid();
   ndnfs::group_id = getgid();

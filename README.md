@@ -39,13 +39,13 @@ To force unmount, use '-f' flag:
     $ umount -f /tmp/ndnfs
 </pre>
 
-To configure ndnfs files prefix, use '-o prefix=\<prefix\>'; to configure log file path, usr '-o log=\<log file path\>'.
+To configure ndnfs files prefix, use '-o prefix=\<prefix\>'; to configure log file path, use '-o log=\<log file path\>'; to configure database file path , use '-o db=\<database file path\>'.
 
 For example,
 <pre>
-    $ ./build/ndnfs /tmp/dir /tmp/ndnfs -o prefix=/ndn/broadcast/ndnfs -o log=ndnfs.log
+    $ ./build/ndnfs /tmp/dir /tmp/ndnfs -o prefix=/ndn/broadcast/ndnfs -o log=ndnfs.log -o db=ndnfs.db
 </pre>
-will mount /tmp/dir as /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", and writing logs to ndnfs.log in running directory.
+will mount /tmp/dir as /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs.log, and using ndnfs.db as database file in running directory.
 
 Please note that current implementation does not scan files that already exists in actual path, before running ndnfs.
 
@@ -67,9 +67,9 @@ Use '-p' flag to configure prefix, '-d' flag to select db file, and '-f' flag to
 
 For example,
 <pre>
-    $ ./build/ndnfs-server -p /ndn/broadcast/ndnfs -l ndnfs-server.log -f /tmp/ndnfs
+    $ ./build/ndnfs-server -p /ndn/broadcast/ndnfs -l ndnfs-server.log -f /tmp/ndnfs -d ndnfs.db
 </pre>
-will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", and writing logs to ndnfs-server.log in running directory.
+will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs-server.log, and using ndnfs.db as database file in running directory.
 
 ### NDNFS-client
 
