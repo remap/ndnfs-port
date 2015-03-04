@@ -212,19 +212,19 @@ int main(int argc, char **argv)
   ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
   ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
   ndnfs::keyChain.reset
-	(new ndn::KeyChain
-	  (ndn::ptr_lib::make_shared<ndn::IdentityManager>
-		(identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
-		  (new ndn::NoVerifyPolicyManager())));
+    (new ndn::KeyChain
+      (ndn::ptr_lib::make_shared<ndn::IdentityManager>
+        (identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
+          (new ndn::NoVerifyPolicyManager())));
   
   ndn::Name keyName("/testname/DSK-123");
   ndnfs::certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
-		 (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
+         (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
   identityStorage->addKey(keyName, ndn::KEY_TYPE_RSA, ndn::Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
   privateKeyStorage->setKeyPairForKeyName
-	(keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
-	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
-	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
+    (keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
+     sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
+     sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
   
   cout << "NDNFS: version 0.3" << endl;
   
@@ -237,35 +237,35 @@ int main(int argc, char **argv)
   for(i = 1; (i < argc && argv[i][0] == '-'); i++);
 
   if (i == argc) {
-	cerr << "Error: missing actual folder path." << endl;
-	usage();
-	return -1;
+    cerr << "Error: missing actual folder path." << endl;
+    usage();
+    return -1;
   }
   
   // check if 'root_path' exists
   struct stat s;
   int err = stat(argv[i], &s);
   if (err == -1) {
-	cerr << "Error: actual folder does not exist." << endl;
-	return 0;
+    cerr << "Error: actual folder does not exist." << endl;
+    return 0;
   } else {
-	if(S_ISDIR(s.st_mode)) {
-	  cout << "NDNFS: root path is " << realpath(argv[i], NULL) << endl;
-	} else {
+    if(S_ISDIR(s.st_mode)) {
+      cout << "NDNFS: root path is " << realpath(argv[i], NULL) << endl;
+    } else {
       cerr << "Error: actual folder is a file." << endl;
       return 0;
-	}
+    }
   }
  
   ndnfs::root_path = string(realpath(argv[i], NULL));
   
   for(; i < argc; i++) {
-	argv[i] = argv[i + 1];
+    argv[i] = argv[i + 1];
   }
   argc--;
   
   if (ndnfs::root_path.back() == '/') {
-	ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
+    ndnfs::root_path = ndnfs::root_path.substr(0, ndnfs::root_path.size() - 1);
   }
    
   // uid and gid will be set to that of the user who starts the fuse process
@@ -278,19 +278,19 @@ int main(int argc, char **argv)
   fuse_opt_parse(&args, &conf, ndnfs_opts, NULL);
 
   if (conf.prefix != NULL) {
-	ndn::Name interestBaseName(conf.prefix);
-	ndnfs::global_prefix = interestBaseName.toUri();
+    ndn::Name interestBaseName(conf.prefix);
+    ndnfs::global_prefix = interestBaseName.toUri();
   }
   
   Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
   if (conf.log_path != NULL) {
     ndnfs::logging_path = string(conf.log_path);
-	FILE* log_fd = fopen(ndnfs::logging_path.c_str(), "w");
-	if (ndnfs::logging_path == "" || log_fd == NULL) {
-	  Output2FILE::stream() = stdout;
-	} else {
-	  Output2FILE::stream() = log_fd;
-	}
+    FILE* log_fd = fopen(ndnfs::logging_path.c_str(), "w");
+    if (ndnfs::logging_path == "" || log_fd == NULL) {
+      Output2FILE::stream() = stdout;
+    } else {
+      Output2FILE::stream() = log_fd;
+    }
   } else {
     Output2FILE::stream() = stdout;
   }
@@ -298,11 +298,11 @@ int main(int argc, char **argv)
   FILE_LOG(LOG_DEBUG) << "main: global prefix is " << ndnfs::global_prefix << endl;
 
   if (sqlite3_open(db_name, &db) == SQLITE_OK) {
-	FILE_LOG(LOG_DEBUG) << "main: sqlite db open ok" << endl;
+    FILE_LOG(LOG_DEBUG) << "main: sqlite db open ok" << endl;
   } else {
-	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
-	sqlite3_close(db);
-	return -1;
+    FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
+    sqlite3_close(db);
+    return -1;
   }
   
   // Init tables in database

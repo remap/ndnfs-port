@@ -38,50 +38,50 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
   Name::Component comp = data_name.get(data_name.size() - 2);
   string marker = comp.toEscapedString();
   if (marker == NdnfsNamespace::fileComponentName_) {
-	Ndnfs::DirInfoArray infoa;
-	if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
-	  cout << "This is a directory:" << endl;
-	  int n = infoa.di_size();
-	  for (int i = 0; i<n; i++) {
-		const Ndnfs::DirInfo &info = infoa.di(i);
-		cout << info.path() << endl;
-	  }
-	  if (fetchFile_) {
-		cout << "Cannot fetch a directory." << endl;
-	  }
-	}
-	else{
-	  cerr << "Protobuf decoding error" << endl;
-	}
+    Ndnfs::DirInfoArray infoa;
+    if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
+      cout << "This is a directory:" << endl;
+      int n = infoa.di_size();
+      for (int i = 0; i<n; i++) {
+        const Ndnfs::DirInfo &info = infoa.di(i);
+        cout << info.path() << endl;
+      }
+      if (fetchFile_) {
+        cout << "Cannot fetch a directory." << endl;
+      }
+    }
+    else{
+      cerr << "Protobuf decoding error" << endl;
+    }
   }
   else if (marker == NdnfsNamespace::fileComponentName_) {
-	Ndnfs::FileInfo infof;
-	if(infof.ParseFromArray(content.buf(),content.size()) && infof.IsInitialized()){
-	  cout << "This is a file" << endl;
-	  cout << "name:  " << data->getName().toUri() << endl;
-	  cout << "size:  " << infof.size() << endl;
-	  cout << "version:   " << infof.version() << endl;
-	  cout << "total segments: " << infof.totalseg() << endl;
-	  if (infof.mimetype() != "") {
-		cout << "mime type: " << infof.mimetype() << endl;
-	  }
-	
-	  totalSegment_ = infof.totalseg();
-	
-	  if (fetchFile_) {
-		Name fileName = data_name.getPrefix(data_name.size() - 2);
-		fileName.appendVersion((uint64_t)infof.version()).appendSegment(0);
+    Ndnfs::FileInfo infof;
+    if(infof.ParseFromArray(content.buf(),content.size()) && infof.IsInitialized()){
+      cout << "This is a file" << endl;
+      cout << "name:  " << data->getName().toUri() << endl;
+      cout << "size:  " << infof.size() << endl;
+      cout << "version:   " << infof.version() << endl;
+      cout << "total segments: " << infof.totalseg() << endl;
+      if (infof.mimetype() != "") {
+        cout << "mime type: " << infof.mimetype() << endl;
+      }
+    
+      totalSegment_ = infof.totalseg();
+    
+      if (fetchFile_) {
+        Name fileName = data_name.getPrefix(data_name.size() - 2);
+        fileName.appendVersion((uint64_t)infof.version()).appendSegment(0);
   
-		Interest interest(fileName);
+        Interest interest(fileName);
 
-		face_.expressInterest
-		  (interest, bind(&Handler::onFileData, this, _1, _2), 
-		   bind(&Handler::onTimeout, this, _1));
-	  }
-	}
-	else{
-	  cerr << "Protobuf decoding error" << endl;
-	}
+        face_.expressInterest
+          (interest, bind(&Handler::onFileData, this, _1, _2), 
+           bind(&Handler::onTimeout, this, _1));
+      }
+    }
+    else{
+      cerr << "Protobuf decoding error" << endl;
+    }
   }
   else {
     // We could be receiving only a segment of the data, 
@@ -106,8 +106,8 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
     Interest modifiedInterest(modifiedInterestName);
     
     face_.expressInterest
-		  (modifiedInterest, bind(&Handler::onAttrData, this, _1, _2), 
-		   bind(&Handler::onTimeout, this, _1));
+          (modifiedInterest, bind(&Handler::onAttrData, this, _1, _2), 
+           bind(&Handler::onTimeout, this, _1));
     
     cout << "Tried adding file component marker to given interest; Name: " << modifiedInterest.getName().toUri() << endl;
     
@@ -121,22 +121,22 @@ void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, c
   Name name = data->getName();
   
   if (doVerification_) {
-	keyChain_.verifyData
-	  (data, bind(&Handler::onVerified, this, _1), 
-	   bind(&Handler::onVerifyFailed, this, _1));
+    keyChain_.verifyData
+      (data, bind(&Handler::onVerified, this, _1), 
+       bind(&Handler::onVerifyFailed, this, _1));
   } else {
-	cout << "Verification skipped." << endl;
+    cout << "Verification skipped." << endl;
   }
 
   if (fileName_ != "") {
-	ofstream writeFile;
-	// TODO: in case of out of order delivery, we should write to the file by offset.
-	writeFile.open (fileName_, std::ofstream::out | std::ofstream::app);
-	cout << "onFileData: Received content. Size " << data->getContent().size() << endl;
-	for (size_t i = 0; i < data->getContent().size(); ++i) {
-	  writeFile << (*data->getContent())[i];
-	}
-	writeFile.close();
+    ofstream writeFile;
+    // TODO: in case of out of order delivery, we should write to the file by offset.
+    writeFile.open (fileName_, std::ofstream::out | std::ofstream::app);
+    cout << "onFileData: Received content. Size " << data->getContent().size() << endl;
+    for (size_t i = 0; i < data->getContent().size(); ++i) {
+      writeFile << (*data->getContent())[i];
+    }
+    writeFile.close();
   } else {
     cout << "Local file writing skipped." << endl;
   }
@@ -144,15 +144,15 @@ void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, c
   currentSegment_ = (int)(name.rbegin()->toSegment());
   currentSegment_++;  // segments are zero-indexed
   if (currentSegment_ == totalSegment_) {
-	cout << "Last segment received." << endl;
+    cout << "Last segment received." << endl;
   } else {
-	Name newInterestName(name.getPrefix(name.size() - 1));
-	newInterestName.appendSegment((uint64_t)currentSegment_);
-	Interest newInterest(newInterestName);
-	
-	face_.expressInterest
-	  (newInterest, bind(&Handler::onFileData, this, _1, _2), 
-	   bind(&Handler::onTimeout, this, _1));
+    Name newInterestName(name.getPrefix(name.size() - 1));
+    newInterestName.appendSegment((uint64_t)currentSegment_);
+    Interest newInterest(newInterestName);
+    
+    face_.expressInterest
+      (newInterest, bind(&Handler::onFileData, this, _1, _2), 
+       bind(&Handler::onTimeout, this, _1));
   }
 }
 
