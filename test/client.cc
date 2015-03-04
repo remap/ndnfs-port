@@ -152,7 +152,7 @@ static uint8_t DEFAULT_RSA_PRIVATE_KEY_DER[] = {
 
 #define FETCH_COMMAND "fetch "
 #define SHOW_COMMAND "show "
-#define HELP_COMMAND "help "
+#define HELP_COMMAND "help"
 
 Face face("localhost");
 ptr_lib::shared_ptr<KeyChain> keyChain;
@@ -198,8 +198,8 @@ int main (int argc, char **argv) {
   face.setCommandSigningInfo(*keyChain, certificateName);
 
   while (true) {
-	if (isStdinReady()) {
-	  string input = stdinReadLine();
+    if (isStdinReady()) {
+      string input = stdinReadLine();
 	  if (strstr(input.c_str(), SHOW_COMMAND)) {
 		string nameStr = input.substr(strlen(SHOW_COMMAND));
 		
@@ -232,7 +232,10 @@ int main (int argc, char **argv) {
 		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
 	  }
 	  else if (strstr(input.c_str(), HELP_COMMAND)) {
-	    
+	    cout << "Displaying help:" << endl;
+	    cout << "> " << SHOW_COMMAND << "[NDN name]: Show the content/meta of a folder/file." << endl;
+	    cout << "> " << FETCH_COMMAND << "[NDN name] [local file name]: Fetch a file and save it locally." << endl;
+	    cout << "> " << HELP_COMMAND << ": Show help." << endl;
 	  }
 	  else {
 		cout << input << ": Command unknown." << endl;
