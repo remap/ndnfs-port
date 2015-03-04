@@ -84,7 +84,7 @@ def build (bld):
     bld (
         target = "test-client",
         features = ["cxx", "cxxprogram"],
-        source = bld.path.ant_glob(['test/client.cc', 'test/handler.cc', 'server/*.proto']),
+        source = bld.path.ant_glob(['test/client.cc', 'test/handler.cc', 'server/*.proto', 'server/namespace.cc']),
         use = 'NDNCPP PROTOBUF',
         includes = 'server'
         )

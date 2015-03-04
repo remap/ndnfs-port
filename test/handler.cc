@@ -8,6 +8,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "namespace.h"
+
 using namespace ndn;
 using namespace std;
 
@@ -35,7 +37,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
   const Name& data_name = data->getName();
   Name::Component comp = data_name.get(data_name.size() - 2);
   string marker = comp.toEscapedString();
-  if (marker == "%C1.FS.dir") {
+  if (marker == NdnfsNamespace::fileComponentName_) {
 	Ndnfs::DirInfoArray infoa;
 	if (infoa.ParseFromArray(content.buf(),content.size()) && infoa.IsInitialized()) {
 	  cout << "This is a directory:" << endl;
@@ -52,7 +54,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
 	  cerr << "Protobuf decoding error" << endl;
 	}
   }
-  else if (marker == "%C1.FS.file") {
+  else if (marker == NdnfsNamespace::fileComponentName_) {
 	Ndnfs::FileInfo infof;
 	if(infof.ParseFromArray(content.buf(),content.size()) && infof.IsInitialized()){
 	  cout << "This is a file" << endl;
@@ -92,7 +94,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
     for (int i = 0; i < data_name.size(); i++) {
       comp = data_name.get(i);
       marker = comp.toEscapedString();
-      if (marker == "%C1.FS.file" || marker == "%C1.FS.dir") {
+      if (marker == NdnfsNamespace::fileComponentName_ || marker == NdnfsNamespace::dirComponentName_) {
         cout << "Received data that cannot be handled; Name: " << data->getName().toUri() << endl;
         done_ = true;
         return;
@@ -100,7 +102,7 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
     }
     
     Name modifiedInterestName(interest->getName());
-    modifiedInterestName.append(Name::fromEscapedString("%C1.FS.file"));
+    modifiedInterestName.append(Name::fromEscapedString(NdnfsNamespace::fileComponentName_));
     Interest modifiedInterest(modifiedInterestName);
     
     face_.expressInterest
