@@ -88,6 +88,7 @@ Default behavior For NDNFS content with unknown mimetype is save as file.
 
 **Instructions for client application:**
 * Run nfd locally;
+* nfdc to the host of ndnfs-server or ndn testbed (not needed if ndnfs server runs locally);
 * Run client application;
 <pre>
     $ ./build/test-client
