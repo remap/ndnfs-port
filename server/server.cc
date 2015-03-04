@@ -50,20 +50,17 @@ void abs_path(char *dest, const char *src)
 }
 
 void usage() {
-  fprintf(stderr, "Usage: ./ndnfs-server [-p serving prefix][-d db file][-f file system root][-l logging file path]\n");
+  fprintf(stderr, "Usage: ./ndnfs-server [-p serving prefix][-f file system root][-l logging file path][-d db file]\n");
   exit(1);
 }
 
 int main(int argc, char **argv) {
   // Parse command parameters
   int opt;
-  while ((opt = getopt(argc, argv, "p:d:f:l:")) != -1) {
+  while ((opt = getopt(argc, argv, "p:f:l:d:")) != -1) {
 	switch (opt) {
 	case 'p':
 	  ndnfs::server::fs_prefix.assign(optarg);
-	  break;
-	case 'd':
-	  ndnfs::server::db_name.assign(optarg);
 	  break;
 	case 'f':
 	  ndnfs::server::fs_path.assign(optarg);
@@ -71,13 +68,15 @@ int main(int argc, char **argv) {
 	case 'l':
 	  ndnfs::server::logging_path.assign(optarg);
 	  break;
+	case 'd':
+	  ndnfs::server::db_name.assign(optarg);
+	  break;
 	default:
 	  usage();
 	  break;
 	}
   }
 
- 
   pid_t pid, sid;
   pid = fork();
   if (pid < 0) {
@@ -101,7 +100,7 @@ int main(int argc, char **argv) {
   }
   
   FILE_LOG(LOG_DEBUG) << "Ndnfs-server logging." << endl;
-
+  
   sid = setsid();
   if (sid < 0) {
     cerr << "main: setsid sid < 0" << endl;
@@ -140,9 +139,9 @@ int main(int argc, char **argv) {
   face.setCommandSigningInfo(*ndnfs::server::keyChain, ndnfs::server::certificateName);
   
   if (sqlite3_open(ndnfs::server::db_name.c_str(), &ndnfs::server::db) == SQLITE_OK) {
-	FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
+    FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
   } else {
-	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
+	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db: " << ndnfs::server::db_name << ", quit" << endl;
 	sqlite3_close(ndnfs::server::db);
 	return -1;
   }

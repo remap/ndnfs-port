@@ -43,9 +43,9 @@ To configure ndnfs files prefix, use '-o prefix=\<prefix\>'; to configure log fi
 
 For example,
 <pre>
-    $ ./build/ndnfs /tmp/dir /tmp/ndnfs -o prefix=/ndn/broadcast/ndnfs -o log=ndnfs.log -o db=ndnfs.db
+    $ ./build/ndnfs /tmp/dir /tmp/ndnfs -o prefix=/ndn/broadcast/ndnfs -o log=ndnfs.log -o db=/home/zhehao/ndnfs.db
 </pre>
-will mount /tmp/dir as /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs.log, and using ndnfs.db as database file in running directory.
+will mount /tmp/dir as /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs.log in running directory, and using /home/zhehao/ndnfs.db as database file. (Please use absolute path for db file at the moment)
 
 Please note that current implementation does not scan files that already exists in actual path, before running ndnfs.
 
