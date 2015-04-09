@@ -154,7 +154,7 @@ static uint8_t DEFAULT_RSA_PRIVATE_KEY_DER[] = {
 #define SHOW_COMMAND "show "
 #define HELP_COMMAND "help"
 
-Face face("localhost");
+Face face;
 ptr_lib::shared_ptr<KeyChain> keyChain;
 Name certificateName;
 
