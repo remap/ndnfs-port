@@ -36,6 +36,7 @@ namespace ndnfs {
     
     extern const int seg_size;
     extern const int seg_size_shift;
+    extern const int default_freshness_period;
   }
 }
 

@@ -153,6 +153,7 @@ static uint8_t DEFAULT_RSA_PRIVATE_KEY_DER[] = {
 #define FETCH_COMMAND "fetch "
 #define SHOW_COMMAND "show "
 #define HELP_COMMAND "help"
+#define DEFAULT_INTEREST_LIFETIME_MILLISECONDS 4000
 
 Face face;
 ptr_lib::shared_ptr<KeyChain> keyChain;
@@ -208,6 +209,8 @@ int main (int argc, char **argv) {
 		Handler handler(face, *(keyChain.get()), nameStr);
 		Name name(nameStr);
 		Interest interest(name);
+		interest.setMustBeFresh(true);
+		interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
 		
 		// AttrData is the protobuf encoded info about a file or folder
 		face.expressInterest
@@ -225,6 +228,8 @@ int main (int argc, char **argv) {
 		Handler handler(face, *(keyChain.get()), nameStrs[0], nameStrs[1], true, true);
 		Name name(nameStrs[0]);
 		Interest interest(name);
+		interest.setMustBeFresh(true);
+		interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
 		
 		// AttrData is the protobuf encoded info about a file or folder
 		face.expressInterest

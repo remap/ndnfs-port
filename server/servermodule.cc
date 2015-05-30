@@ -298,7 +298,8 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   
   if (actual_len > 0) {
 	data.setContent((uint8_t*)output, actual_len);
-  
+    data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
+
 	Blob encodedData = data.wireEncode();
 	transport.send(*encodedData);
 	FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << data.getName().toUri() << endl;
@@ -359,6 +360,8 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   data.getMetaInfo().setFinalBlockId(finalBlockId);
   data.setContent((uint8_t*)wireData, infof.ByteSize());
   
+  data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
+
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());
   
@@ -463,7 +466,8 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
   name.append(ndnfsDirComponent).appendVersion(mtime);
 
   Data data(name);
-  
+  data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
+
   data.setContent((const uint8_t *)&content[0], content.size());
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());  
@@ -555,6 +559,8 @@ int sendDirMeta(string path, Transport& transport)
   }
   
   data.setContent((uint8_t*)wireData, dataSize);
+  data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
+  
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
   transport.send(*data.wireEncode());  
   

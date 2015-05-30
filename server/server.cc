@@ -36,6 +36,7 @@ string ndnfs::server::logging_path = "";
 
 const int ndnfs::server::seg_size = 8192;
 const int ndnfs::server::seg_size_shift = 13;
+const int ndnfs::server::default_freshness_period = 5000;
 
 sqlite3 *ndnfs::server::db;
 ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::server::keyChain;
