@@ -73,51 +73,51 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
   ostringstream oss;
   
   for (; iter != name.end(); iter++) {
-	const uint8_t marker = *(iter->getValue().buf());
-	
-	if (marker == 0xFD) {
-	  // Right now, having two versions does not make sense.
-	  if (version == -1) {
-		version = iter->toVersion();
-	  }
-	  else {
-		return -1;
-	  }
-	}
-	else if (marker == 0x00) {
-	  // Having segment number before version number does not make sense
-	  if (version == -1) {
-		return -1;
-	  }
-	  // Having two segment numbers does not make sense
-	  else if (seg != -1) {
-		return -1;
-	  }
-	  else {
-		seg = iter->toSegment();
-	  }
-	}
-	else if (marker == 0xC1) {
-	  // Doesn't make sense for version and segment to come before C1.FS.File
-	  if (version != -1 || seg != -1) {
-	    return -1;
-	  } else {
-	    hasMeta = 1;
-	  }
-	}
-	else {
-	  string component = iter->toEscapedString();
-	  
-	  // If the component comes before <version> and <segment>, it is interpreted as
-	  // part of the path.
-	  if (version == -1 && seg == -1) {
-		oss << "/" << component;
-	  }
-	  // If the component comes after <version>/<segment>, it is considered invalid
-	  else {
-		return -1;
-	  }
-	}
+    const uint8_t marker = *(iter->getValue().buf());
+    
+    if (marker == 0xFD) {
+      // Right now, having two versions does not make sense.
+      if (version == -1) {
+        version = iter->toVersion();
+      }
+      else {
+        return -1;
+      }
+    }
+    else if (marker == 0x00) {
+      // Having segment number before version number does not make sense
+      if (version == -1) {
+        return -1;
+      }
+      // Having two segment numbers does not make sense
+      else if (seg != -1) {
+        return -1;
+      }
+      else {
+        seg = iter->toSegment();
+      }
+    }
+    else if (marker == 0xC1) {
+      // Doesn't make sense for version and segment to come before C1.FS.File
+      if (version != -1 || seg != -1) {
+        return -1;
+      } else {
+        hasMeta = 1;
+      }
+    }
+    else {
+      string component = iter->toEscapedString();
+      
+      // If the component comes before <version> and <segment>, it is interpreted as
+      // part of the path.
+      if (version == -1 && seg == -1) {
+        oss << "/" << component;
+      }
+      // If the component comes after <version>/<segment>, it is considered invalid
+      else {
+        return -1;
+      }
+    }
   }
   
   // we scanned through a valid interest name
@@ -125,19 +125,19 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
 
   path = path.substr(ndnfs::server::fs_prefix.length());
   if (path == "")
-	path = string("/");
-	 
+    path = string("/");
+     
   // has <version>/<segment> 
   if (version != -1 && seg != -1) {
-	ret = 3;
+    ret = 3;
   }
   // has <version>, but not meta component
   else if (version != -1 && !hasMeta) {
-	ret = 2;
+    ret = 2;
   }
   // has meta component as well as version, or has no version. 
   else {
-	ret = 1;
+    ret = 1;
   }
   return ret;
 }
@@ -162,7 +162,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   
   // The client is asking for a segment of a file; selectors and excludes are ignored in this case.
   if (ret == 3) {
-	ret = sendFileContent(interest_name, path, version, seg, transport);
+    ret = sendFileContent(interest_name, path, version, seg, transport);
     if (ret == -1) {
       FILE_LOG(LOG_ERROR) << "onInterest: sendFileContent returned failure for interest name. " << interest_name.toUri() << endl;
     }
@@ -171,28 +171,28 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   else if (ret == 2) {
     // even though client is only asking for a version of file, we still query if that file exists in file_system database,
     // and extracts mime-type and file-type from database.
-	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
 
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
-	  sqlite3_finalize(stmt);
-	  return;
-	}
-	
-	string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
-	enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
-	sqlite3_finalize(stmt);
-	
-	// In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
-	// Since meta component "C1.FS.file" is not present.
-	// TODO: here we should process interest selectors; and adapt for empty files.
-	ret = sendFileContent(interest_name, path, version, -1, transport);
-	if (ret == -1) {
-	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
-	  return ;
-	}
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+      FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
+      sqlite3_finalize(stmt);
+      return;
+    }
+    
+    string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
+    enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
+    sqlite3_finalize(stmt);
+    
+    // In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
+    // Since meta component "C1.FS.file" is not present.
+    // TODO: here we should process interest selectors; and adapt for empty files.
+    ret = sendFileContent(interest_name, path, version, -1, transport);
+    if (ret == -1) {
+      FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
+      return ;
+    }
   }
   // The client is asking for 'generic' info about a file/folder in ndnfs; 
   // TODO: In case of file, selectors and excludes are ignored since older versions are not stored.
@@ -203,26 +203,26 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   // Concerns: If implemented like this, the behavior may confuse nfd,
   //  since here child selectors and excludes doesn't have impact on the name of the content returned.
   else if (ret == 1) {
-	sqlite3_stmt *stmt;
-	sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
-	sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-	if (sqlite3_step(stmt) != SQLITE_ROW) {
-	  FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
-	  sqlite3_finalize(stmt);
-	  
-	  // It may not be a file, but a folder instead, which is not stored in database
-	  ret = sendDirMetaBrowserFriendly(path, transport);
-	}
-	else {
-	  version = sqlite3_column_int(stmt, 0);
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+      FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
+      sqlite3_finalize(stmt);
+      
+      // It may not be a file, but a folder instead, which is not stored in database
+      ret = sendDirMetaBrowserFriendly(path, transport);
+    }
+    else {
+      version = sqlite3_column_int(stmt, 0);
       string mimeType = "";
       if (sqlite3_column_text(stmt, 3) != NULL) {
         mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
       }
-	  enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
-	  
-	  sqlite3_finalize(stmt);
-	  ret = sendFileMeta(path, mimeType, version, fileType, transport);
+      enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
+      
+      sqlite3_finalize(stmt);
+      ret = sendFileMeta(path, mimeType, version, fileType, transport);
     }
     return;
   }
@@ -234,8 +234,8 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   
   // segment is blank, so the first piece of matching name (segment 0) is returned; 
   if (seg == -1) {
-	data.getName().appendSegment(0);
-	seg = 0;
+    data.getName().appendSegment(0);
+    seg = 0;
   }
   
   sqlite3_stmt *stmt;
@@ -244,9 +244,9 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   sqlite3_bind_int(stmt, 2, version);
   sqlite3_bind_int(stmt, 3, seg);
   if(sqlite3_step(stmt) != SQLITE_ROW){
-	FILE_LOG(LOG_DEBUG) << "sendFileContent: no such file/version/segment found in ndnfs: " << path << endl;
-	sqlite3_finalize(stmt);
-	return -1;
+    FILE_LOG(LOG_DEBUG) << "sendFileContent: no such file/version/segment found in ndnfs: " << path << endl;
+    sqlite3_finalize(stmt);
+    return -1;
   }
 
   const char * signatureBlob = (const char *)sqlite3_column_blob(stmt, 3);
@@ -268,11 +268,11 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   readFileSize(path, file_size, total_seg);
 
   if (total_seg > 0) {
-	// in the JS plugin, finalBlockId component is parsed with toSegment
-	// not sure if it's supposed to be like this in other ndn applications,
-	// if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
-	Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
-	data.getMetaInfo().setFinalBlockId(finalBlockId);
+    // in the JS plugin, finalBlockId component is parsed with toSegment
+    // not sure if it's supposed to be like this in other ndn applications,
+    // if so, should consider adding wrapper in library 'toSegment' (returns Component), instead of just 'appendSegment' (returns Name)
+    Name::Component finalBlockId = Name::Component::fromNumberWithMarker(total_seg - 1, 0x00);
+    data.getMetaInfo().setFinalBlockId(finalBlockId);
   }
   
   int fd;
@@ -282,8 +282,8 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   fd = open(file_path, O_RDONLY);
   
   if (fd == -1) {
-	FILE_LOG(LOG_ERROR) << "sendFileContent: Open " << file_path << " failed." << endl;
-	return -1;
+    FILE_LOG(LOG_ERROR) << "sendFileContent: Open " << file_path << " failed." << endl;
+    return -1;
   }
   
   char *output = new char[ndnfs::server::seg_size];
@@ -292,19 +292,19 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   close(fd);
   
   if (actual_len == -1) {
-	FILE_LOG(LOG_ERROR) << "sendFileContent: Read from " << file_path << " failed." << endl;
-	return -1;
+    FILE_LOG(LOG_ERROR) << "sendFileContent: Read from " << file_path << " failed." << endl;
+    return -1;
   }
   
   if (actual_len > 0) {
-	data.setContent((uint8_t*)output, actual_len);
+    data.setContent((uint8_t*)output, actual_len);
     data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
 
-	Blob encodedData = data.wireEncode();
-	transport.send(*encodedData);
-	FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << data.getName().toUri() << endl;
+    Blob encodedData = data.wireEncode();
+    transport.send(*encodedData);
+    FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << data.getName().toUri() << endl;
   } else {
-	FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << data.getName().toUri() << endl;
+    FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << data.getName().toUri() << endl;
   }
   
   delete output;
@@ -318,8 +318,8 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 2, version);
   if (sqlite3_step(stmt) != SQLITE_ROW){
-	sqlite3_finalize(stmt);
-	return -1;
+    sqlite3_finalize(stmt);
+    return -1;
   }
   sqlite3_finalize(stmt);
   
@@ -342,7 +342,7 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   infof.set_version(version);
   
   if (mimeType != "") {
-	infof.set_mimetype(mimeType);
+    infof.set_mimetype(mimeType);
   }
   
   char *wireData = new char[infof.ByteSize()];
@@ -391,11 +391,11 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
   
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, queryPath.c_str());
-	
+    
   DIR *dp = opendir(dir_path);
   if (dp == NULL) {
     FILE_LOG(LOG_DEBUG) << "sendDirMeta: no such folder found: " << queryPath << endl;
-	return -1;
+    return -1;
   }
   
   int count = 0;
@@ -406,56 +406,65 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
   int mtime = st.st_mtime;
   
   string content = "<html><body>";
-  
+  vector<string> dirContents;
+    
   while ((de = readdir(dp)) != NULL) {
-	lstat(de->d_name, &st);
-	
-	enum FileType fileType = REGULAR; 
-	switch (S_IFMT & st.st_mode) 
-	{
-	  case S_IFDIR: 
-		fileType = DIRECTORY;
-		break;
-	  case S_IFCHR:
-		fileType = CHARACTER_SPECIAL;
-		break;
-	  case S_IFREG: 
-		fileType = REGULAR;
-		break;
-	  case S_IFLNK: 
-		fileType = SYMBOLIC_LINK;
-		break;
-	  case S_IFSOCK: 
-		fileType = UNIX_SOCKET;
-		break;
-	  case S_IFIFO: 
-		fileType = FIFO_SPECIAL;
-		break;
-	  default:
-		fileType = REGULAR;
-		break;
-	}
-	if (strcmp(de->d_name, ".")) {
+    lstat(de->d_name, &st);
+    
+    enum FileType fileType = REGULAR; 
+    switch (S_IFMT & st.st_mode) 
+    {
+      case S_IFDIR: 
+        fileType = DIRECTORY;
+        break;
+      case S_IFCHR:
+        fileType = CHARACTER_SPECIAL;
+        break;
+      case S_IFREG: 
+        fileType = REGULAR;
+        break;
+      case S_IFLNK: 
+        fileType = SYMBOLIC_LINK;
+        break;
+      case S_IFSOCK: 
+        fileType = UNIX_SOCKET;
+        break;
+      case S_IFIFO: 
+        fileType = FIFO_SPECIAL;
+        break;
+      default:
+        fileType = REGULAR;
+        break;
+    }
+    
+    if (strcmp(de->d_name, ".")) {
       if (strcmp(de->d_name, "..") == 0) {
-		if (queryPath != "/") {
-		  content = "<br>" + content;
-		  content = "../\">[Parent directory]</a>" + content;
-		  content = "<a href=\"" + content;
-		}
+        if (queryPath != "/") {
+          content = "<br>" + content;
+          content = "../\">[Parent directory]</a>" + content;
+          content = "<a href=\"" + content;
+        }
       } else {
-        // Support for HTML5 <a> download attribute is assumed here.
-        // Theoretically content provider shouldn't specify how browser's going to handle the data?
-        // Processing for directories and file(mime) types.
-		content += "<a download=\"";
-		content += string(de->d_name);
-		content += "\" href=\"./";
-        content += string(de->d_name);
-        content += "\">" + string(de->d_name) + "</a>";
-		content += "<br>";
+        dirContents.push_back(de->d_name);
       }
-	}
+    }
     count ++;
   }
+  
+  std::sort(dirContents.begin(), dirContents.end());
+  
+  for(vector<string>::iterator it = dirContents.begin(); it != dirContents.end(); ++it) {
+    // Support for HTML5 <a> download attribute is assumed here.
+    // Theoretically content provider shouldn't specify how browser's going to handle the data?
+    // Processing for directories and file(mime) types.
+    content += "<a download=\"";
+    content += string(*it);
+    content += "\" href=\"./";
+    content += string(*it);
+    content += "\">" + string(*it) + "</a>";
+    content += "<br>";
+  }
+
   content += "</body></html>";
   closedir(dp);
   
@@ -481,11 +490,11 @@ int sendDirMeta(string path, Transport& transport)
 {
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, path.c_str());
-	
+    
   DIR *dp = opendir(dir_path);
   if (dp == NULL) {
     FILE_LOG(LOG_DEBUG) << "sendDirMeta: no such folder found: " << path << endl;
-	return -1;
+    return -1;
   }
   
   int count = 0;
@@ -497,36 +506,36 @@ int sendDirMeta(string path, Transport& transport)
   int mtime = st.st_mtime;
   
   while ((de = readdir(dp)) != NULL) {
-	Ndnfs::DirInfo *infod = infoa.add_di();
-	
-	lstat(de->d_name, &st);
-	
-	enum FileType fileType = REGULAR; 
-	switch (S_IFMT & st.st_mode) 
-	{
-	  case S_IFDIR: 
-		fileType = DIRECTORY;
-		break;
-	  case S_IFCHR:
-		fileType = CHARACTER_SPECIAL;
-		break;
-	  case S_IFREG: 
-		fileType = REGULAR;
-		break;
-	  case S_IFLNK: 
-		fileType = SYMBOLIC_LINK;
-		break;
-	  case S_IFSOCK: 
-		fileType = UNIX_SOCKET;
-		break;
-	  case S_IFIFO: 
-		fileType = FIFO_SPECIAL;
-		break;
-	  default:
-		fileType = REGULAR;
-		break;
-	}
-	infod->set_type(fileType);
+    Ndnfs::DirInfo *infod = infoa.add_di();
+    
+    lstat(de->d_name, &st);
+    
+    enum FileType fileType = REGULAR; 
+    switch (S_IFMT & st.st_mode) 
+    {
+      case S_IFDIR: 
+        fileType = DIRECTORY;
+        break;
+      case S_IFCHR:
+        fileType = CHARACTER_SPECIAL;
+        break;
+      case S_IFREG: 
+        fileType = REGULAR;
+        break;
+      case S_IFLNK: 
+        fileType = SYMBOLIC_LINK;
+        break;
+      case S_IFSOCK: 
+        fileType = UNIX_SOCKET;
+        break;
+      case S_IFIFO: 
+        fileType = FIFO_SPECIAL;
+        break;
+      default:
+        fileType = REGULAR;
+        break;
+    }
+    infod->set_type(fileType);
     infod->set_path(de->d_name);
     count ++;
   }
@@ -548,8 +557,8 @@ int sendDirMeta(string path, Transport& transport)
       FILE_LOG(LOG_ERROR) << "sendDirMeta: Dir attr is larger than a segment; support for this is not yet implemented." << endl;
       return -1;
     }
-	wireData = new char[dataSize];
-	infoa.SerializeToArray(wireData, dataSize);
+    wireData = new char[dataSize];
+    infoa.SerializeToArray(wireData, dataSize);
   }
   else {
     // Don't expect this to happen, there should always be . and ..
