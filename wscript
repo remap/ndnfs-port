@@ -5,10 +5,8 @@ APPNAME='NDNFS'
 from waflib import Build, Logs, Utils, Task, TaskGen, Configure
 
 def options(opt):
-    opt.add_option('--debug', action='store_true', default=True, dest='debug', help='''debugging mode''')
-    
-    opt.add_option('--ndn-cpp-dir', type='string', default='/usr/local/lib', dest='_ndn_cpp_dir', help='''Path to libndn-cpps''')
-    opt.add_option('--ndn-cpp-inc', type='string', default='/usr/local/include', dest='_ndn_cpp_inc', help='''Path to ndn-cpp includes''')
+    opt.add_option('--debug',action='store_true',default=True,dest='debug',help='''debugging mode''')
+    opt.add_option('--test', action='store_true',default=True,dest='_test',help='''build unit tests''')
 
     # if Utils.unversioned_sys_platform () == "darwin":
     #     pass
@@ -55,19 +53,14 @@ def configure(conf):
     #     pass
 
     conf.write_config_header('config.h')
+
+    conf.check(features='cxx cxxprogram', lib=['ndn-cpp'], libpath=['/usr/local/lib'], cflags=['-Wall'], uselib_store='NDNCPP', mandatory=True)
+    conf.env.append_value('INCLUDES', ['/usr/local/include'])
     
-    # TODO: dir and inc does not work as intended for now.
-    conf.env.LIBPATH_NDNCPP = [conf.options._ndn_cpp_dir]
-    conf.env.INCLUDES_NDNCPP = [conf.options._ndn_cpp_inc]
-    
-    conf.check(
-      features='cxx cxxprogram',
-      lib=['ndn-cpp'],
-      libpath=[conf.options._ndn_cpp_dir], 
-      cflags=['-Wall'],
-      uselib_store='NDNCPP',
-      mandatory=True)
-    
+    if conf.options._test:
+        conf.define ('_TESTS', 1)
+        conf.env.TEST = 1
+
     conf.load('boost')
     conf.check_boost(lib='system test iostreams thread chrono')
         
@@ -78,36 +71,36 @@ def build (bld):
         target = "ndnfs",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['fs/*.cc']),
-        use = ['FUSE', 'NDNCPP', 'SQLITE3'],
-        includes = ['.']
+        use = 'FUSE NDNCPP SQLITE3',
+        includes = '.'
         )
     bld (
         target = "ndnfs-server",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['server/*.cc', 'server/*.proto']),
-        use = ['NDNCPP', 'SQLITE3', 'PROTOBUF'],
-        includes = ['fs', 'server']
+        use = 'NDNCPP SQLITE3 PROTOBUF',
+        includes = 'fs server'
         )
     bld (
         target = "test-client",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['test/client.cc', 'test/handler.cc', 'server/*.proto', 'server/namespace.cc']),
-        use = ['NDNCPP', 'PROTOBUF'],
-        includes = ['server']
+        use = 'NDNCPP PROTOBUF',
+        includes = 'server'
         )
     bld (
         target = "cat-file",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['test/cat_file.cc', 'server/*.proto']),
-        use = ['BOOST', 'NDNCPP', 'PROTOBUF'],
-        includes = ['server']
+        use = 'BOOST NDNCPP PROTOBUF',
+        includes = 'server'
         )
     bld (
         target = "cat-file-pipe",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['test/cat_file_pipe.cc', 'server/*.proto']),
-        use = ['BOOST', 'NDNCPP', 'PROTOBUF'],
-        includes = ['server']
+        use = 'BOOST NDNCPP PROTOBUF',
+        includes = 'server'
         )
 
 @Configure.conf
