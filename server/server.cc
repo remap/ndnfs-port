@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
   
   ndn::Name prefix_name(ndnfs::server::fs_prefix);
   
-  face.registerPrefix(prefix_name, ::onInterest, ::onRegisterFailed);
+  face.registerPrefix(prefix_name, (ndn::OnInterest)::onInterest, ::onRegisterFailed);
   while (true) {
 	face.processEvents();
 	usleep (10000);
