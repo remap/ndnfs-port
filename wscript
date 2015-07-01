@@ -78,7 +78,7 @@ def build (bld):
         target = "ndnfs-server",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['server/*.cc', 'server/*.proto']),
-        use = 'NDNCPP SQLITE3 PROTOBUF',
+        use = 'BOOST NDNCPP SQLITE3 PROTOBUF',
         includes = 'fs server'
         )
     bld (
