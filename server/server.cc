@@ -23,6 +23,8 @@
  */
 
 #include <iostream>
+#include <boost/asio.hpp>
+#include <ndn-cpp/threadsafe-face.hpp>
 
 #include "server.h"
 #include "servermodule.h"
@@ -42,7 +44,8 @@ sqlite3 *ndnfs::server::db;
 ndn::ptr_lib::shared_ptr<ndn::KeyChain> ndnfs::server::keyChain;
 ndn::Name ndnfs::server::certificateName;
 
-ndn::Face face;
+boost::asio::io_service ioService;
+ndn::ThreadsafeFace face(ioService);
 
 void abs_path(char *dest, const char *src)
 {
@@ -154,10 +157,10 @@ int main(int argc, char **argv) {
   ndn::Name prefix_name(ndnfs::server::fs_prefix);
   
   face.registerPrefix(prefix_name, (ndn::OnInterest)::onInterest, ::onRegisterFailed);
-  while (true) {
-	face.processEvents();
-	usleep (10000);
-  }
+
+  // Use work to keep ioService running.
+  boost::asio::io_service::work work(ioService);
+  ioService.run();
 
   FILE_LOG(LOG_DEBUG) << "main: server exit." << endl;
   
