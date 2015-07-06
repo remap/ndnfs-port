@@ -150,14 +150,15 @@ int main(int argc, char **argv) {
 	return -1;
   }
 
-  FILE_LOG(LOG_DEBUG) << "main: serving prefix: " << ndnfs::server::fs_prefix << endl;
   FILE_LOG(LOG_DEBUG) << "main: db file: " << ndnfs::server::db_name << endl;
   FILE_LOG(LOG_DEBUG) << "main: fs root path: " << ndnfs::server::fs_path << endl;
   
   ndn::Name prefix_name(ndnfs::server::fs_prefix);
   
   face.registerPrefix(prefix_name, (const ndn::OnInterestCallback&)::onInterestCallback, ::onRegisterFailed);
-
+  
+  FILE_LOG(LOG_DEBUG) << "main: serving prefix: " << ndnfs::server::fs_prefix << endl;
+  
   // Use work to keep ioService running.
   boost::asio::io_service::work work(ioService);
   ioService.run();
