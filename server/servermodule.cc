@@ -143,7 +143,7 @@ int parseName(const ndn::Name& name, int &version, int &seg, string &path)
   return ret;
 }
 
-void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::shared_ptr<const Interest>& interest, Transport& transport, uint64_t registeredPrefixId) 
+void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, ndn::Face& face, uint64_t registeredPrefixId, const ndn::ptr_lib::shared_ptr<const ndn::InterestFilter>& filter)
 {
   string path;
   int version;
@@ -163,7 +163,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
   
   // The client is asking for a segment of a file; selectors and excludes are ignored in this case.
   if (ret == 3) {
-    ret = sendFileContent(interest_name, path, version, seg, transport);
+    ret = sendFileContent(interest_name, path, version, seg, face);
     if (ret == -1) {
       FILE_LOG(LOG_ERROR) << "onInterest: sendFileContent returned failure for interest name. " << interest_name.toUri() << endl;
     }
@@ -189,7 +189,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
     // In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
     // Since meta component "C1.FS.file" is not present.
     // TODO: here we should process interest selectors; and adapt for empty files.
-    ret = sendFileContent(interest_name, path, version, -1, transport);
+    ret = sendFileContent(interest_name, path, version, -1, face);
     if (ret == -1) {
       FILE_LOG(LOG_DEBUG) << "onInterest: no such file/version found in ndnfs: " << path << " " << version << endl;
       return ;
@@ -212,7 +212,7 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
       sqlite3_finalize(stmt);
       
       // It may not be a file, but a folder instead, which is not stored in database
-      ret = sendDirMetaBrowserFriendly(path, transport);
+      ret = sendDirMetaBrowserFriendly(path, face);
     }
     else {
       version = sqlite3_column_int(stmt, 0);
@@ -223,13 +223,13 @@ void onInterest(const ptr_lib::shared_ptr<const Name>& prefix, const ptr_lib::sh
       enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
       
       sqlite3_finalize(stmt);
-      ret = sendFileMeta(path, mimeType, version, fileType, transport);
+      ret = sendFileMeta(path, mimeType, version, fileType, face);
     }
     return;
   }
 }
 
-int sendFileContent(Name interest_name, string path, int version, int seg, Transport& transport)
+int sendFileContent(Name interest_name, string path, int version, int seg, ndn::Face& face)
 {
   Data data(interest_name);
   
@@ -301,8 +301,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
     data.setContent((uint8_t*)output, actual_len);
     data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
 
-    Blob encodedData = data.wireEncode();
-    transport.send(*encodedData);
+    face.putData(data);
     FILE_LOG(LOG_DEBUG) << "sendFileContent: Data returned with name: " << data.getName().toUri() << endl;
   } else {
     FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << data.getName().toUri() << endl;
@@ -312,7 +311,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, Trans
   return actual_len;
 }
 
-int sendFileMeta(const string& path, const string& mimeType, int version, FileType type, Transport& transport) 
+int sendFileMeta(const string& path, const string& mimeType, int version, FileType type, ndn::Face& face) 
 {
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
@@ -364,7 +363,7 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
 
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
-  transport.send(*data.wireEncode());
+  face.putData(data);
   
   FILE_LOG(LOG_DEBUG) << "sendFileMeta: Data returned with name: " << name.toUri() << endl;
   
@@ -381,7 +380,7 @@ bool hasEnding(string const &fullString, string const &ending)
     }
 }
 
-int sendDirMetaBrowserFriendly(string path, Transport& transport)
+int sendDirMetaBrowserFriendly(string path, ndn::Face& face)
 {
   string queryPath = path;
   
@@ -480,14 +479,14 @@ int sendDirMetaBrowserFriendly(string path, Transport& transport)
 
   data.setContent((const uint8_t *)&content[0], content.size());
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
-  transport.send(*data.wireEncode());  
+  face.putData(data);  
   
   FILE_LOG(LOG_DEBUG) << "sendDirMetaBrowserFriendly: Data returned with name: " << name.toUri() << endl;
   
   return 0;
 }
 
-int sendDirMeta(string path, Transport& transport) 
+int sendDirMeta(string path, ndn::Face& face) 
 {
   char dir_path[PATH_MAX] = "";
   abs_path(dir_path, path.c_str());
@@ -572,7 +571,7 @@ int sendDirMeta(string path, Transport& transport)
   data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
   
   ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName);
-  transport.send(*data.wireEncode());  
+  face.putData(data);  
   
   FILE_LOG(LOG_DEBUG) << "sendDirMeta: Data returned with name: " << name.toUri() << ". Data size: " << dataSize << endl;
   

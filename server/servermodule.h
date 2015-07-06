@@ -44,7 +44,7 @@
 
 #include <sqlite3.h>
 
-void onInterest(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, ndn::Transport& transport, uint64_t registeredPrefixId);
+void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix, const ndn::ptr_lib::shared_ptr<const ndn::Interest>& interest, ndn::Face& face, uint64_t registeredPrefixId, const ndn::ptr_lib::shared_ptr<const ndn::InterestFilter>& filter);
 
 void onRegisterFailed(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix);
 
@@ -71,9 +71,6 @@ void onRegisterFailed(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix);
 int 
 parseName(const ndn::Name& name, int &version, int &seg, std::string &path);
 
-void 
-processInterest(const ndn::Name& interest_name, ndn::Transport& transport);
-
 /**
  * readFileSize reads a file from path, and extracts its size and number of segments.
  * @param path String path to the file
@@ -92,21 +89,21 @@ readFileSize(std::string path, int& file_size, int& total_seg);
  * @param transport The transport from which to send the dir info
  */
 int 
-sendDirMeta(std::string path, ndn::Transport& transport);
+sendDirMeta(std::string path, ndn::Face& face);
 
 int 
-sendDirMetaBrowserFriendly(std::string path, ndn::Transport& transport);
+sendDirMetaBrowserFriendly(std::string path, ndn::Face& face);
 
 /**
  * sendFileMeta checks if entry exists in file_versions table, and returns the protobuf encoded attributes if so.
  */
 int 
-sendFileMeta(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Transport& transport);
+sendFileMeta(const std::string& path, const std::string& mimeType, int version, FileType fileType, ndn::Face& face);
 
 /**
  * sendFileContent checks if entry exists in file_segments table, and returns the assembled data packet if so.
  */
 int 
-sendFileContent(ndn::Name interest_name, std::string path, int version, int seg, ndn::Transport& transport);
+sendFileContent(ndn::Name interest_name, std::string path, int version, int seg, ndn::Face& face);
 
 #endif // __SERVER_MODULE_H__

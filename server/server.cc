@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
   
   ndn::Name prefix_name(ndnfs::server::fs_prefix);
   
-  face.registerPrefix(prefix_name, (ndn::OnInterest)::onInterest, ::onRegisterFailed);
+  face.registerPrefix(prefix_name, (const ndn::OnInterestCallback&)::onInterestCallback, ::onRegisterFailed);
 
   // Use work to keep ioService running.
   boost::asio::io_service::work work(ioService);
