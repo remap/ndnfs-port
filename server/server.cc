@@ -80,7 +80,8 @@ int main(int argc, char **argv) {
 	  break;
 	}
   }
-
+  
+  // TODO: debug daemonize start failure on OSX
   pid_t pid, sid;
   pid = fork();
   if (pid < 0) {
