@@ -83,7 +83,6 @@ void onMetaData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
 
             for (int i = 0; i < interest_pipe_size; i++) {
                 ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-                interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
                 interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
                 //interestPtr->setAnswerOriginKind(0);
                 current_seg++;
@@ -120,7 +119,6 @@ void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
         done = true;
     } else {
         ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-        interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
         interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
         //interestPtr->setAnswerOriginKind(0);
         handler.expressInterest(*interestPtr, onFileData, onTimeout);
@@ -167,7 +165,6 @@ int main (int argc, char **argv) {
         start = high_resolution_clock::now();
         for (int i = 0; i < interest_pipe_size; i++) {
             ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-            interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
             interestPtr->setName(Name(file_name).appendSegment(current_seg));
             //interestPtr->setAnswerOriginKind(0);
             current_seg++;
@@ -175,7 +172,6 @@ int main (int argc, char **argv) {
         }
     } else {
         ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-        interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
         interestPtr->setName(Name(name).append("%C1.FS.file"));
         //interestPtr->setAnswerOriginKind(0);
         handler.expressInterest(*interestPtr, onMetaData, onTimeout);

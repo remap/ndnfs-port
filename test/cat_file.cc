@@ -232,7 +232,6 @@ void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
     } else {
         
         ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
-        interestPtr->setScope(ndn_Interest_ANSWER_CONTENT_STORE);
         interestPtr->setName(Name(file_name).appendSegment((uint64_t)current_seg));
         
         handler.expressInterest(*interestPtr, onFileData, onTimeout);
