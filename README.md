@@ -10,7 +10,7 @@ Report bug to Zhehao. wangzhehao410305@gmail.com
 
 NDNFS is an NDN-friendly file system. When mounted, data in the file system can be fetched via NDN through NDNFS-server.
 
-To run on Mac:
+To run:
 <pre>
     $ mkdir /tmp/ndnfs
     $ mkdir /tmp/dir
@@ -55,7 +55,7 @@ For files to become available via NDNFS-server, please put them into mount point
 
 NDNFS-server supports read access of NDNFS by remote through NDN.
 
-To run on Mac:
+To run:
 
 Install and configure [NFD](https://github.com/named-data/NFD) before running the FS server.
 
