@@ -4,7 +4,7 @@ Port of NDN file system based on [work](https://github.com/wentaoshang/NDNFS) by
 
 See the file [INSTALL.md](https://github.com/zhehaowang/ndnfs-port/blob/master/INSTALL.md) for build and install instructions.
 
-Report bug to Zhehao. wangzhehao410305@gmail.com
+Report bug to Zhehao. zhehao@remap.ucla.edu
 
 ### Usage
 
@@ -77,12 +77,11 @@ For a quick test, please make sure that you have NFD, NDNFS-server and NDNFS run
     $ ndn-tlv-peek -pf /ndn/broadcast/ndnfs/test
 </pre>
 to see the file test.txt being served over NDN. 
-(We recommend using the Firefox addon client to test NDNFS.)
 
 ### NDNFS-client
 
-To access NDNFS data remotely, please use [NDN-JS Firefox addon](https://github.com/named-data/ndn-js/blob/master/ndn-protocol.xpi?raw=true), preferably [experimental addon](https://github.com/zhehaowang/ndn-js/blob/plugin-update/ndn-protocol.xpi?raw=true) with adaptations made specific for ndnfs; 
-Or a built-in client in tests.
+To access NDNFS data remotely, please use [NDN-JS Firefox addon](https://github.com/named-data/ndn-js/blob/master/ndn-protocol.xpi?raw=true) in [NDN-JS library](https://github.com/named-data/ndn-js); 
+Or the built-in client in tests. (We recommend using the Firefox addon client to test NDNFS.)
 
 **Instructions for Firefox addon:**
 * Run nfd locally;
