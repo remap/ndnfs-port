@@ -71,6 +71,13 @@ For example,
 </pre>
 will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs-server.log, and using ndnfs.db as database file in running directory.
 
+To test this, please make sure that you have NFD, NDNFS-server and NDNFS running. Assuming that the default configuration is used, you can do
+<pre>
+    $ echo "Hello, world!" > /tmp/ndnfs/test.txt
+    $ ndn-tlv-peek -pf /ndn/broadcast/ndnfs/test
+</pre>
+to see the file test.txt being served over NDN.
+
 ### NDNFS-client
 
 To access NDNFS data remotely, please use [NDN-JS Firefox addon](https://github.com/named-data/ndn-js/blob/master/ndn-protocol.xpi?raw=true), preferably [experimental addon](https://github.com/zhehaowang/ndn-js/blob/plugin-update/ndn-protocol.xpi?raw=true) with adaptations made specific for ndnfs; 
@@ -95,10 +102,6 @@ Default behavior For NDNFS content with unknown mimetype is save as file.
 </pre>
 * To browse the metadata of a certain file or directory, in the running client, type in "show \<prefix\>/\<file or folder\>";
 * To fetch a certain file and save it locally, in the running client, type in "fetch \<prefix\>/\<file or folder\> \<local save path\>".
-
-Please note that in branch "browser-dir-listing" (default branch), only "fetch" command is supported.
-
-Consider switching to "main" if testing with the client application.
 
 ### New features
 * Instead of the network-ready data packets, store only the signature in sqlite3 database, and assemble NDN data packets when requested;
