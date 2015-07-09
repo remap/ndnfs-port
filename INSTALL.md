@@ -2,46 +2,62 @@
 
 ### Prerequisites
 
-* OSXFUSE 2.5.6
-* Sqlite
-* [NDN-CPP library](github.com/named-data/ndn-cpp)
-* boost library (optional)
-* protobuf-cpp
+###### For Mac OS X (>=10.8.4, Using MacPort)
+
+* OSXFuse (tested with 2.5.6)
+Download and install [OSXFUSE](http://osxfuse.github.io/2013/05/01/OSXFUSE-2.5.6.html)
 * pkgconfig
-
-Following are the detailed steps for each platform to install the prerequisites.
-
-* Mac OS X 10.8.4, Mac OS X 10.9.5
-Install Xcode.
-In Xcode Preferences > Downloads, install "Command Line Tools".
-
-From the following web site, download and install [OSXFUSE](http://osxfuse.github.io/2013/05/01/OSXFUSE-2.5.6.html)
-
-Install MacPorts from http://www.macports.org/install.php, and install prerequisite with MacPorts
 <pre>
-    $ sudo port install boost
-    $ sudo port install protobuf-cpp
     $ sudo port install pkgconfig
 </pre>
-Install NDN-CPP as follows (boost is optional for ndn-cpp, but right now we only tested with ndn-cpp compiled with boost shared-ptrs and functions):
+* Sqlite3
 <pre>
-    $ git clone https://github.com/named-data/ndn-cpp.git
-    $ cd ndn-cpp
-    $ ./configure
-    $ make
-    $ sudo make install
+    $ sudo port install sqlite3
 </pre>
+* protobuf-cpp
+<pre>
+    $ sudo port install protobuf-cpp
+</pre>
+* boost library (NDNFS-port uses boost async I/O from NDN-CPP, please compile NDN-CPP with boost if possible.)
+<pre>
+    $ sudo port install boost
+</pre>
+* [NDN-CPP library](github.com/named-data/ndn-cpp)
+
+###### For Ubuntu (>=12.04)
+
+* Fuse (tested with 2.5.6)
+<pre>
+    $ sudo apt-get install fuse
+</pre>
+* pkgconfig
+<pre>
+    $ sudo apt-get install pkg-config
+</pre>
+* Sqlite3
+<pre>
+    $ sudo apt-get install sqlite3
+</pre>
+* protobuf-cpp
+<pre>
+    $ sudo apt-get install libprotobuf-dev protobuf-compiler
+</pre>
+* boost library (NDNFS-port uses boost async I/O from NDN-CPP, please compile NDN-CPP with boost if possible.)
+<pre>
+    $ sudo apt-get install libboost1.54-all-dev
+</pre>
+* [NDN-CPP library](github.com/named-data/ndn-cpp)
 
 ### Build
 
-Please make sure that PKG\_CONFIG\_PATH includes the folder containing libndn-cxx.pc, protobuf.pc and osxfuse.pc/fuse.pc;
-(And for some systems, default LD\_LIBRARY\_PATH may not include the default library installation path of protobuf (should be fixed in future wscripts)).
+Please make sure that PKG\_CONFIG\_PATH includes the folder containing protobuf.pc and osxfuse.pc/fuse.pc;
+(And for some systems, default LD\_LIBRARY\_PATH may not include the default library installation path of protobuf).
 For example, do:
 <pre>
     $ export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig 
     $ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 </pre>
-And then, do:
+And then, in NDNFS folder do:
 <pre>
     $ ./waf configure
     $ ./waf
