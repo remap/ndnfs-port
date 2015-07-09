@@ -71,12 +71,13 @@ For example,
 </pre>
 will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs-server.log, and using ndnfs.db as database file in running directory.
 
-To test this, please make sure that you have NFD, NDNFS-server and NDNFS running. Assuming that the default configuration is used, you can do
+For a quick test, please make sure that you have NFD, NDNFS-server and NDNFS running. Assuming that the default configuration is used, you can do
 <pre>
     $ echo "Hello, world!" > /tmp/ndnfs/test.txt
     $ ndn-tlv-peek -pf /ndn/broadcast/ndnfs/test
 </pre>
-to see the file test.txt being served over NDN.
+to see the file test.txt being served over NDN. 
+(We recommend using the Firefox addon client to test NDNFS.)
 
 ### NDNFS-client
 
