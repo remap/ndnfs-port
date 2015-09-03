@@ -50,6 +50,9 @@ using namespace func_lib::placeholders;
 #endif
 
 //TODO: This test client does not handle drops in packets, if going through UDP, for example
+//TODO: Under same test environment, this client took 6min to fetch a 100M vid, (scp took 45 sec for the vid)
+//  the browser addon, while going through multiple hops, took reportedly 40min to fetch the vid, and have trouble streaming the vid
+//    while going through only one hop, it didn't have trouble streaming vid; look into this.
 
 static uint8_t DEFAULT_RSA_PUBLIC_KEY_DER[] = {
   0x30, 0x82, 0x01, 0x22, 0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01,

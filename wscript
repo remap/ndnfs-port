@@ -62,7 +62,7 @@ def configure(conf):
         conf.env.TEST = 1
 
     conf.load('boost')
-    conf.check_boost(lib='system test iostreams thread chrono')
+    conf.check_boost(lib='system thread date_time regex serialization')
         
     conf.load('protoc')
 
@@ -86,20 +86,6 @@ def build (bld):
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['test/client.cc', 'test/handler.cc', 'server/*.proto', 'server/namespace.cc']),
         use = 'NDNCPP PROTOBUF',
-        includes = 'server'
-        )
-    bld (
-        target = "cat-file",
-        features = ["cxx", "cxxprogram"],
-        source = bld.path.ant_glob(['test/cat_file.cc', 'server/*.proto']),
-        use = 'BOOST NDNCPP PROTOBUF',
-        includes = 'server'
-        )
-    bld (
-        target = "cat-file-pipe",
-        features = ["cxx", "cxxprogram"],
-        source = bld.path.ant_glob(['test/cat_file_pipe.cc', 'server/*.proto']),
-        use = 'BOOST NDNCPP PROTOBUF',
         includes = 'server'
         )
 
