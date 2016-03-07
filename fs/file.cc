@@ -20,10 +20,19 @@
  */
 
 #include "file.h"
+#include <ctime>
+#include <iostream>
+#include <chrono>
+#include <json/reader.h>
+#include <json/value.h>
+#include <json/writer.h>
+#include <cstring>
 
 #include "signature-states.h"
 
 using namespace std;
+
+extern Json::Value sqlite_returned_row;
 
 int ndnfs_open (const char *path, struct fuse_file_info *fi)
 {
@@ -80,7 +89,7 @@ int ndnfs_open (const char *path, struct fuse_file_info *fi)
  * In Linux(Ubuntu), current implementation reports "utimens: no such file" when executing touch; digging out why.
  * For the newly created file, getattr is called before mknod/open(O_CREAT); wonder how that works.
  */
-int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
+int ndnfs_mknod (const char *path, mode_t mode, dev_t dev) // I am now only considering the insertion operation so that metadata JSON object is created over here only.
 {
   FILE_LOG(LOG_DEBUG) << "ndnfs_mknod: path=" << path << ", mode=0" << std::oct << mode << endl;
 
@@ -171,16 +180,24 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
   } else {
     ret = mknod(full_path, mode, dev);
   }
-  
+  //Meta data is encoded into JSON format.
   if (ret == -1) {
     FILE_LOG(LOG_ERROR) << "ndnfs_mknod: mknod failed. Full path: " << full_path << ". Errno " << errno << endl;
     return -errno;
+  } else {
+    FILE_LOG(LOG_DEBUG) << "ndnfs_file metadata : all metadata is encoded into JSON string format.";
+    sqlite_returned_row["path"] = path;
+    sqlite_returned_row["ver"] = ver;
+    sqlite_returned_row["current_version"] = ver;
+    sqlite_returned_row["mime_type"] = mime_type;
+    sqlite_returned_row["ready_signed"] = signatureState;
+    sqlite_returned_row["type"] = fileType;
   }
   
   return 0;
 }
 
-int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)//Currently no addtional code is added over here.
 {
   FILE_LOG(LOG_DEBUG) << "ndnfs_read: path=" << path << ", offset=" << std::dec << offset << ", size=" << size << endl;
   
@@ -222,10 +239,21 @@ int ndnfs_read(const char *path, char *buf, size_t size, off_t offset, struct fu
 
 int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+  struct tm * begin;
+  struct tm * end;
+  std::time_t nowTime;
+  std::time_t endTime;
+  std::chrono::system_clock::time_point started;
+  std::chrono::duration<double> sec;
+
+  nowTime = std::time(0);
+  begin = localtime( & nowTime );
+  started = std::chrono::system_clock::now();
+
   FILE_LOG(LOG_DEBUG) << "ndnfs_write: path=" << path << std::dec << ", size=" << size << ", offset=" << offset << endl;
   
   // First check if the entry exists in the database
-  sqlite3_stmt *stmt;
+  /*sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
@@ -234,11 +262,21 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
     return -ENOENT;
   }
   
-  sqlite3_finalize (stmt);
-  
-  // Then write the actual file
+  sqlite3_finalize (stmt); */
+  // I am trying to use the JSON metadata object created in the mknod.
+  //JSON data checker, first compare path of the file
   char full_path[PATH_MAX];
-  abs_path(full_path, path);
+  FILE_LOG(LOG_ERROR) << "JSON obejct : " << sqlite_returned_row["path"].asCString() << endl;
+  FILE_LOG(LOG_ERROR) << "path : " << path << endl;
+ // if(path == sqlite_returned_row["path"].asCString()){
+  if (strcmp(path, sqlite_returned_row["path"].asCString()) == 0){   
+  // Then write the actual file
+  	abs_path(full_path, path);
+  } else {
+    FILE_LOG(LOG_ERROR) << "JSON object content path does not match in write: " << errno << endl;
+    return -errno;
+  }
+     
   int fd = open(full_path, O_RDWR);
   if (fd == -1) {
     FILE_LOG(LOG_ERROR) << "ndnfs_write: open error. Errno: " << errno << endl;
@@ -252,15 +290,16 @@ int ndnfs_write (const char *path, const char *buf, size_t size, off_t offset, s
   }
   
   close(fd);
-  
+  FILE_LOG(LOG_DEBUG) << "ndnfs_write current time: " << begin->tm_min << " min, " << begin->tm_sec << " sec " << endl;
   return write_len;  // return the number of bytes written on success
 }
 
 
 int ndnfs_truncate (const char *path, off_t length)
 {
+  int res = 0;//Additional res 
   // First we check if the entry exists in database
-  sqlite3_stmt *stmt;
+  /*sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
@@ -268,11 +307,24 @@ int ndnfs_truncate (const char *path, off_t length)
     sqlite3_finalize (stmt);
     return -ENOENT;
   } 
-  sqlite3_finalize (stmt);
+  sqlite3_finalize (stmt);*/
     
   // Then we truncate the actual file
+  /*char full_path[PATH_MAX];
+  abs_path(full_path, path);*/
+  
+  // Then write the actual file
+  // I am trying to use the JSON metadata object created in the mknod.
   char full_path[PATH_MAX];
-  abs_path(full_path, path);
+  if(strcmp(path, sqlite_returned_row["path"].asCString()) == 0){
+        res = SQLITE_ROW;
+  	abs_path(full_path, path);
+  } else {
+    FILE_LOG(LOG_ERROR) << "JSON file path does not match in truncate: " << errno << endl;
+    res = 0;
+    return -errno;
+  }
+
   
   int trunc_ret = truncate(full_path, length);
   if (trunc_ret == -1) {
@@ -284,7 +336,7 @@ int ndnfs_truncate (const char *path, off_t length)
 }
 
 
-int ndnfs_unlink(const char *path)
+int ndnfs_unlink(const char *path)//This will be rewritten later as to the different scheme.
 {
   FILE_LOG(LOG_DEBUG) << "ndnfs_unlink: path=" << path << endl;
 
@@ -312,19 +364,42 @@ int ndnfs_unlink(const char *path)
 
 int ndnfs_release (const char *path, struct fuse_file_info *fi)
 {
-  FILE_LOG(LOG_DEBUG) << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
-  int curr_version = time(0);
+  struct tm * begin;
+  struct tm * end;
+  std::time_t nowTime;
+  std::time_t endTime;
+  std::chrono::system_clock::time_point started;
+  std::chrono::duration<double> sec;
 
+  nowTime = std::time(0);
+  begin = localtime( & nowTime );
+  started = std::chrono::system_clock::now();
+  
+  FILE_LOG(LOG_DEBUG) << "ndnfs_release: path=" << path << ", flag=0x" << std::hex << fi->flags << endl;
+  FILE_LOG(LOG_DEBUG) << "ndnfs_release start time: " << begin->tm_min << " min, " << begin->tm_sec << " sec " << endl;
+  int curr_version = time(0);
+  int res = 0;
   // First we check if the file exists
+  // Then write the actual file
+  // I am trying to use the JSON metadata object created in the mknod.
+  char full_path[PATH_MAX];
+  if(strcmp(path, sqlite_returned_row["path"].asCString()) == 0){
+  	abs_path(full_path, path);
+        res = SQLITE_ROW;
+  } else {
+    FILE_LOG(LOG_ERROR) << "JSON file path does not match in release: " << errno << endl;
+    res = -1;
+    return -errno;
+  }
   sqlite3_stmt *stmt;
-  sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
+  /*sqlite3_prepare_v2 (db, "SELECT current_version FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   int res = sqlite3_step (stmt);
   if (res != SQLITE_ROW) {
     sqlite3_finalize (stmt);
     return -ENOENT;
   }
-  sqlite3_finalize (stmt);
+  sqlite3_finalize (stmt);*/
         
   if ((fi->flags & O_ACCMODE) != O_RDONLY) {
     sqlite3_prepare_v2 (db, "UPDATE file_system SET current_version = ? WHERE path = ?;", -1, &stmt, 0);
@@ -368,6 +443,8 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
       size = pread(fd, buf, ndnfs::seg_size, seg << ndnfs::seg_size_shift);
       if (size == -1) {
         FILE_LOG(LOG_ERROR) << "ndnfs_release: read error. Errno: " << errno << endl;
+	FILE_LOG(LOG_DEBUG) << "ndnfs_release end time: " <<  end->tm_min << " min, " << end->tm_sec << " sec. " << endl;
+  	FILE_LOG(LOG_DEBUG) << "ndnfs_release total time elapsed : "<< sec.count() << " sec " << endl;
         return -errno;    
       }
       sign_segment (path, curr_version, seg, buf, size);
@@ -376,7 +453,11 @@ int ndnfs_release (const char *path, struct fuse_file_info *fi)
     
     close(fd);
   }
-  
+  endTime = std::time(0);
+  end = localtime( & endTime );
+  sec = std::chrono::system_clock::now() - started;
+  FILE_LOG(LOG_DEBUG) << "ndnfs_release end time: " <<  end->tm_min << " min, " << end->tm_sec << " sec. " << endl;
+  FILE_LOG(LOG_DEBUG) << "ndnfs_release total time elapsed : "<< sec.count() << " sec " << endl;
   return 0;
 }
 
@@ -503,7 +584,7 @@ int ndnfs_link(const char *from, const char *to)
  * TODO: Rename would require checking if rename target (avoid collision error in db) already exists, and resigning of everything...
  * Rename should better work as a duplicate.
  */
-int ndnfs_rename(const char *from, const char *to)
+int ndnfs_rename(const char *from, const char *to)//Not implemented yet because it is not associated with file write operations.
 {
   int res = 0;
   sqlite3_stmt *stmt;
