@@ -45,7 +45,7 @@ int truncate_version(const char* path, const int ver, off_t length)
 {
   FILE_LOG(LOG_DEBUG) << "truncate_version: path=" << path << std::dec << ", ver=" << ver << ", length=" << length << endl;
 
-  sqlite3_stmt *stmt;
+  /*sqlite3_stmt *stmt;
   sqlite3_prepare_v2 (db, "SELECT * FROM file_versions WHERE path = ? AND version = ?;", -1, &stmt, 0);
   sqlite3_bind_text (stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_bind_int (stmt, 2, ver);
@@ -54,10 +54,22 @@ int truncate_version(const char* path, const int ver, off_t length)
 	// Should not happen
 	sqlite3_finalize (stmt);
 	return -1;
-  }
+  }*/
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  char versionVal[PATH_MAX];
+  int bufferLength = getxattr(full_path, current_versionName, versionVal, sizeof(versionVal));
   
-  int size = sqlite3_column_int (stmt, 2);
-  sqlite3_finalize (stmt);
+  if (bufferLength < 0 ){
+     FILE_LOG(LOG_ERROR) << "ndnfs_read: ext attribute open rror: Errno: " << errno << endl;
+     return -ENOENT;
+  } else {
+      FILE_LOG(LOG_DEBUG) << "ndnfs_read: ext attribute open success: version value: " << versionVal << endl;
+  }
+  int size = atoi(versionVal);
+  //sqlite3_column_int (stmt, 2);
+  
+ // sqlite3_finalize (stmt);
   
   if ((size_t) length == size) {
 	return 0;
@@ -66,7 +78,7 @@ int truncate_version(const char* path, const int ver, off_t length)
 	// Truncate to length
 	int seg_end = seek_segment (length);
 
-	sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? and version = ?;", -1, &stmt, 0);
+	/*sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? and version = ?;", -1, &stmt, 0);
 	sqlite3_bind_int (stmt, 1, (int) length);
 	sqlite3_bind_int (stmt, 2, seg_end);
 	sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
@@ -81,7 +93,7 @@ int truncate_version(const char* path, const int ver, off_t length)
 	
 	truncate_segment (path, ver, seg_end, tail);
 	remove_segments (path, ver, seg_end + 1);
-	
+	*/
 	return 0;
   }
   else {
@@ -93,21 +105,30 @@ int truncate_version(const char* path, const int ver, off_t length)
 void remove_version(const char* path, const int ver)
 {
   FILE_LOG(LOG_DEBUG) << "remove_version: path=" << path << ", ver=" << std::dec << ver << endl;
-
-  remove_segments(path, ver);
+  char full_path[PATH_MAX];
+  abs_path(full_path, path);
+  char versionNum[PATH_MAX];
+  int retSuccess = removexattr(full_path, current_versionName);
+  if (retSuccess == -1){
+	FILE_LOG(LOG_ERROR) << "ndnfs_version.cc : removing ext-attribute version failed : " << endl;
+        
+  } else {
+       FILE_LOG(LOG_DEBUG) << "ndnfs_version.cc: removing ext-attribute success: Curr_versionNanme : " << current_versionName << endl;
+  }
+  /*remove_segments(path, ver);
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "DELETE FROM file_versions WHERE path = ? and version = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 2, ver);
   sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
+  sqlite3_finalize(stmt);*/
 }
 
 void remove_file_entry(const char* path)
 {
-  sqlite3_stmt *stmt;
+  /*sqlite3_stmt *stmt;
   sqlite3_prepare_v2(db, "DELETE FROM file_system WHERE path = ?;", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
   sqlite3_step(stmt);
-  sqlite3_finalize(stmt);
+  sqlite3_finalize(stmt);*/
 }

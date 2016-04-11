@@ -22,6 +22,7 @@
  */
  
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -156,7 +157,30 @@ void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix,
   int minSuffixComponents = interest->getMinSuffixComponents();
   int maxSuffixComponents = interest->getMaxSuffixComponents();
   Exclude exclude = interest->getExclude();
+
+
+  // Extract all file metadata
+  char full_path[PATH_MAX];
+  abs_path(full_path, path.c_str());
+  char mimeType1[PATH_MAX];
+  char type1[PATH_MAX];
+  char current_version1[PATH_MAX];
+  int bufferLength = getxattr(full_path, current_versionName, current_version1, sizeof(current_version1));
+  bufferLength = getxattr(full_path, mime_typeName, mimeType1, sizeof(mimeType1));
+  bufferLength = getxattr(full_path, fileTypeName, type1, sizeof(type1));
+  if (bufferLength < 0){
+     FILE_LOG(LOG_ERROR) << "onInterest: getting all the extended attribute may have failed! " << endl;
+  } else {
+     FILE_LOG(LOG_DEBUG) << "onInterest: all necessary extended attribute have been successful! "<< current_version1<< ", " << mimeType1 << ", " << type1 <<". " << endl;
+     FILE_LOG(LOG_DEBUG) << "Version No. "<< current_version1 << endl;
+  }
   
+  string mimeTypeStr = string(reinterpret_cast<const char*>(mimeType1));
+  enum FileType fileTypeExt = static_cast<FileType>(atoi(type1));
+  int versionExt = atoi(current_version1);
+
+  FILE_LOG(LOG_DEBUG) << "onInterest: extracted values in the last are : " << mimeTypeStr << ", " << fileTypeExt << ", " << versionExt<< ". " << endl;  
+
   if (childSelector != -1 || minSuffixComponents != -1 || maxSuffixComponents != -1 || exclude.size() != 0) {
     FILE_LOG(LOG_ERROR) << "onInterest: child selectors, min/maxSuffixComponents or excludes are not supported in current implementation." << endl;
   }
@@ -164,6 +188,7 @@ void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix,
   // The client is asking for a segment of a file; selectors and excludes are ignored in this case.
   if (ret == 3) {
     ret = sendFileContent(interest_name, path, version, seg, face);
+    FILE_LOG(LOG_DEBUG) << "Sending file content, path is : " << path << endl;
     if (ret == -1) {
       FILE_LOG(LOG_ERROR) << "onInterest: sendFileContent returned failure for interest name. " << interest_name.toUri() << endl;
     }
@@ -172,19 +197,37 @@ void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix,
   else if (ret == 2) {
     // even though client is only asking for a version of file, we still query if that file exists in file_system database,
     // and extracts mime-type and file-type from database.
-    sqlite3_stmt *stmt;
+    /*sqlite3_stmt *stmt;
     sqlite3_prepare_v2(ndnfs::server::db, "SELECT mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);*/
 
-    if (sqlite3_step(stmt) != SQLITE_ROW) {
+    //extract mimeType and type from the file.
+ 
+  	abs_path(full_path, path.c_str());
+  //char mimeType1[PATH_MAX];
+  //char type1[PATH_MAX];
+  //char current_version1[PATH_MAX];
+  //int bufferLength = getxattr(full_path, current_versionName, current_version1, sizeof(current_version1));
+  	int bufferLength = getxattr(full_path, mime_typeName, mimeType1, sizeof(mimeType1));
+  	bufferLength = getxattr(full_path, fileTypeName, type1, sizeof(type1)); 
+
+   /* if (sqlite3_step(stmt) != SQLITE_ROW) {
       FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
       sqlite3_finalize(stmt);
       return;
-    }
+    } */
+
+	if(bufferLength == -1){
+		FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
+		FILE_LOG(LOG_DEBUG) << "getxatttr did not retrieve metadata. " << endl;
+ 		return;
+	}
     
-    string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
-    enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
-    sqlite3_finalize(stmt);
+    //string mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
+    string mimeType = string(reinterpret_cast<const char*>(mimeType1));
+    //enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 1));
+    enum FileType fileType = static_cast<FileType>(atoi(type1));
+    //sqlite3_finalize(stmt);
     
     // In order to make the behavior same as a content store, we should reply with the first piece of matching data; 
     // Since meta component "C1.FS.file" is not present.
@@ -204,25 +247,44 @@ void onInterestCallback(const ndn::ptr_lib::shared_ptr<const ndn::Name>& prefix,
   // Concerns: If implemented like this, the behavior may confuse nfd,
   //  since here child selectors and excludes doesn't have impact on the name of the content returned.
   else if (ret == 1) {
-    sqlite3_stmt *stmt;
+    /*sqlite3_stmt *stmt;
     sqlite3_prepare_v2(ndnfs::server::db, "SELECT current_version, mime_type, type FROM file_system WHERE path = ?", -1, &stmt, 0);
-    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
-    if (sqlite3_step(stmt) != SQLITE_ROW) {
+    sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);*/
+
+  	char full_path3[PATH_MAX];
+ 	abs_path(full_path3, path.c_str());
+ 	char mimeType3[PATH_MAX];
+	char type3[PATH_MAX];
+ 	char current_version3[PATH_MAX];
+  	int bufferLength3 = getxattr(full_path3, current_versionName, current_version3, sizeof(current_version3));
+  	int bufferLengthMime3 = getxattr(full_path3, mime_typeName, mimeType3, sizeof(mimeType3));
+  	bufferLength3 = getxattr(full_path3, fileTypeName, type3, sizeof(type3));
+    
+    /*if (sqlite3_step(stmt) != SQLITE_ROW) {
       FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
-      sqlite3_finalize(stmt);
+      sqlite3_finalize(stmt);*/
+	if(bufferLength3 == -1){
+		FILE_LOG(LOG_DEBUG) << "onInterest: no such file found in ndnfs: " << path << endl;
+	
       
       // It may not be a file, but a folder instead, which is not stored in database
       ret = sendDirMetaBrowserFriendly(path, face);
     }
     else {
-      version = sqlite3_column_int(stmt, 0);
+      //version = sqlite3_column_int(stmt, 0);
+      version = atoi(current_version3);
       string mimeType = "";
-      if (sqlite3_column_text(stmt, 3) != NULL) {
-        mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
-      }
-      enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
-      
-      sqlite3_finalize(stmt);
+	if(bufferLengthMime3 != -1){
+		mimeType = string(reinterpret_cast<const char*>(mimeType3));
+	}
+
+      /*if (sqlite3_column_text(stmt, 3) != NULL) {
+        //mimeType = string(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1)));
+    	mimeType = string(reinterpret_cast<const char*>(mimeType1));
+      }*/
+      //enum FileType fileType = static_cast<FileType>(sqlite3_column_int(stmt, 2));
+      enum FileType fileType = static_cast<FileType>(atoi(type1));
+     // sqlite3_finalize(stmt);
       ret = sendFileMeta(path, mimeType, version, fileType, face);
     }
     return;
@@ -239,7 +301,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, ndn::
     seg = 0;
   }
   
-  sqlite3_stmt *stmt;
+  /*sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT path, version, segment, signature FROM file_segments WHERE path = ? AND version = ? AND segment = ?", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
   sqlite3_bind_int(stmt, 2, version);
@@ -258,9 +320,9 @@ int sendFileContent(Name interest_name, string path, int version, int seg, ndn::
   // signature type from database, which is not yet implemented in the database
   Sha256WithRsaSignature signature;
   
-  signature.setSignature(Blob((const uint8_t *)signatureBlob, len));
+  signature.setSignature(Blob((const uint8_t *)signatureBlob, len));*/
   
-  data.setSignature(signature);
+  //data.setSignature(signature);//This part is to be eliminated!
 
   // When assembling the data packet, finalblockid should be put into each segment,
   // this means when reading each segment, file_version also needs to be consulted for the finalBlockId.
@@ -299,6 +361,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, ndn::
   
   if (actual_len > 0) {
     data.setContent((uint8_t*)output, actual_len);
+    ndnfs::server::keyChain->sign(data, ndnfs::server::certificateName); //The data content will be signed over in the server module soon.
     data.getMetaInfo().setFreshnessPeriod(ndnfs::server::default_freshness_period);
 
     face.putData(data);
@@ -313,6 +376,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, ndn::
 
 int sendFileMeta(const string& path, const string& mimeType, int version, FileType type, ndn::Face& face) 
 {
+	/*
   sqlite3_stmt *stmt;
   sqlite3_prepare_v2(ndnfs::server::db, "SELECT * FROM file_versions WHERE path = ? AND version = ? ", -1, &stmt, 0);
   sqlite3_bind_text(stmt, 1, path.c_str(), -1, SQLITE_STATIC);
@@ -321,7 +385,9 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
     sqlite3_finalize(stmt);
     return -1;
   }
-  sqlite3_finalize(stmt);
+  sqlite3_finalize(stmt);*/
+  //This just seems to check versions of a files
+	
   
   Ndnfs::FileInfo infof;
   

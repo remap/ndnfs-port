@@ -36,6 +36,8 @@
 #include <ndn-cpp/security/key-chain.hpp>
 #include <ndn-cpp/security/identity/osx-private-key-storage.hpp>
 #include <ndn-cpp/security/identity/memory-private-key-storage.hpp>
+#include <sys/types.h>
+#include <sys/xattr.h>
 
 #include "dir.pb.h"
 #include "file.pb.h"

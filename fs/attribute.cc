@@ -55,14 +55,68 @@ int ndnfs_chmod(const char *path, mode_t mode)
   return 0;
 }
 
+#ifdef HAVE_SETXATTR
+
+int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags) {
+    
+    FILE_LOG(LOG_DEBUG) << "ndnfs_setxattr: path=" << path << ", set an attribute name : " << name << ", set an value : " << value <<endl;
+    char fullPath[PATH_MAX];
+    abs_path(fullPath, path);
+    int ret = lsetxattr(fullPath, name, value, size, flags);
+
+    if(ret == -1){
+      FILE_LOG(LOG_ERROR) << "ndnfs_setxattr: setxattr failed. Errno: " << -errno << endl;
+      return -errno;
+    }
+    return 0;
+}
+
+
+int ndnfs_getxattr(const char *path, const char *name, char *value, size_t size){
+
+    
+    char fullPath[PATH_MAX];
+    abs_path(fullPath, path);
+    size_t retValue = lgetxattr(fullPath, name, value, size);
+   // FILE_LOG(LOG_DEBUG) << "ndnfs_getxattr: path=" << path << ", get an attribute name : " << name << ", get an value : " << value <<endl;
+    if(retValue == -1){
+         //FILE_LOG(LOG_ERROR) << "ndnfs_getxattr: getxattr failed. Errno: " << -errno << endl;
+	 return -errno;
+    }
+    return retValue;
+
+}
+
+
+int ndnfs_listxattr(const char* path, char* list, size_t size){
+    char fullPath[PATH_MAX];
+    abs_path(fullPath, path);
+    size_t retValue = llistxattr(fullPath, list, size);
+    FILE_LOG(LOG_DEBUG) << "ndnfs_listxattr: path=" << path << ", get an list name : " << list << endl;
+    if(retValue == -1){
+         FILE_LOG(LOG_ERROR) << "ndnfs_listxattr: listxattr failed. Errno: " << -errno << endl;
+	 return -errno;
+    }
+    return retValue;
+}
+
+int ndnfs_removexattr(const char *path, const char *name){
+    char fullPath[PATH_MAX];
+    abs_path(fullPath, path);
+    
+    int retValue = lremovexattr(fullPath, name);
+    
+    
+    FILE_LOG(LOG_DEBUG) << "ndnfs_removexattr: path=" << path << endl;
+    if(retValue == -1){
+         FILE_LOG(LOG_ERROR) << "ndnfs_removexattr: removexattr failed. Errno: " << -errno << endl;
+	 return -errno;
+    }
+    return retValue;
+}
+#endif
+
 
 // Dummy function to stop commands such as 'cp' from complaining
 
-#ifdef NDNFS_OSXFUSE
-int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags, uint32_t position)
-#elif NDNFS_FUSE
-int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
-#endif
-{
-  return 0;
-}
+

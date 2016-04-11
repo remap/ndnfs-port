@@ -21,6 +21,7 @@
 #ifndef NDNFS_H
 #define NDNFS_H
 
+
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
@@ -35,13 +36,21 @@
 
 #include <time.h>
 #include <sys/time.h>
+
 #include <utime.h>
 
 #include <pthread.h>
 
 #define FUSE_USE_VERSION 26
+#define HAVE_SETXATTR true
+ 
 #include <fuse.h>
+#ifdef HAVE_SETXATTR
+#include <sys/types.h>
+#include <sys/xattr.h>
+#endif
 #include <sqlite3.h>
+
 
 #include <ndn-cpp/security/key-chain.hpp>
 #include <ndn-cpp/security/identity/memory-identity-storage.hpp>
@@ -49,11 +58,26 @@
 #include <ndn-cpp/security/policy/no-verify-policy-manager.hpp>
 #include <ndn-cpp/name.hpp>
 
+#include <json/reader.h>
+#include <json/value.h>
+#include <json/writer.h>
+
 #include "config.h"
 #include "logger.h"
 
 extern const char *db_name;
 extern sqlite3 *db;
+static Json::Value sqlite_returned_row;
+
+//Convert metadataNames to C strings.
+static const char* pathName = "user.path";
+static const char* verName = "user.ver";
+static const char* current_versionName = "user.current_version";
+static const char* mime_typeName = "user.mime_type";
+static const char* ready_signedName = "user.ready_signed";
+static const char* fileTypeName = "user.type";
+static const char* certificateNName = "user.certificate";
+
 
 namespace ndnfs {
     extern ndn::Name certificateName;
@@ -61,6 +85,8 @@ namespace ndnfs {
     extern std::string global_prefix;
     extern std::string root_path;
     extern std::string logging_path;
+    
+    
 
     extern const int version_type;
     extern const int segment_type;

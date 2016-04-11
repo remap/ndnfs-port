@@ -23,6 +23,8 @@
 
 #include "ndnfs.h"
 #include "version.h"
+#include <sys/types.h>
+#include <sys/xattr.h>
 
 int ndnfs_getattr(const char *path, struct stat *stbuf);
 
@@ -31,7 +33,14 @@ int ndnfs_chmod(const char *path, mode_t mode);
 #ifdef NDNFS_OSXFUSE
 int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags, uint32_t position);
 #elif NDNFS_FUSE
+#ifdef HAVE_SETXATTR 
 int ndnfs_setxattr(const char *path, const char *name, const char *value, size_t size, int flags);
-#endif
 
+int ndnfs_getxattr(const char *path, const char *name, char *value, size_t size);
+
+int ndnfs_listxattr(const char* path, char* list, size_t size);
+
+int ndnfs_removexattr(const char *path, const char *name);
+#endif
+#endif
 #endif

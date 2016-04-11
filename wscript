@@ -36,7 +36,8 @@ def configure(conf):
                                                  '-g'])
 
     conf.define ("FUSE_NDNFS_VERSION", VERSION)
-
+    conf.check_cfg(package='jsoncpp', args=['--cflags', '--libs'],
+                   uselib_store='JSON', mandatory=True)
     try:
         conf.check_cfg(package='osxfuse', args=['--cflags', '--libs'], uselib_store='FUSE', mandatory=True)
         conf.define("NDNFS_OSXFUSE", 1)
@@ -71,7 +72,7 @@ def build (bld):
         target = "ndnfs",
         features = ["cxx", "cxxprogram"],
         source = bld.path.ant_glob(['fs/*.cc']),
-        use = 'FUSE NDNCPP SQLITE3',
+        use = 'FUSE NDNCPP JSON SQLITE3',
         includes = '.'
         )
     bld (

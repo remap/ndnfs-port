@@ -157,7 +157,12 @@ static void create_fuse_operations(struct fuse_operations *fuse_op)
 {
   fuse_op->getattr  = ndnfs_getattr;
   fuse_op->chmod    = ndnfs_chmod;
-  fuse_op->setxattr = ndnfs_setxattr;
+  #ifdef HAVE_SETXATTR
+  	fuse_op->setxattr = ndnfs_setxattr;
+  	fuse_op->getxattr = ndnfs_getxattr;
+  	fuse_op->listxattr = ndnfs_listxattr;
+	fuse_op->removexattr = ndnfs_removexattr;
+  #endif
   fuse_op->open     = ndnfs_open;
   fuse_op->read     = ndnfs_read;
   fuse_op->readdir  = ndnfs_readdir;
@@ -306,13 +311,13 @@ int main(int argc, char **argv)
   
   FILE_LOG(LOG_DEBUG) << "main: global prefix is " << ndnfs::global_prefix << endl;
 
-  if (sqlite3_open(db_name, &db) == SQLITE_OK) {
+  /*if (sqlite3_open(db_name, &db) == SQLITE_OK) {
     FILE_LOG(LOG_DEBUG) << "main: sqlite db open ok" << endl;
   } else {
     FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db, quit" << endl;
     sqlite3_close(db);
     return -1;
-  }
+  }*/
   
   // Init tables in database
   const char* INIT_FS_TABLE = "\
@@ -329,7 +334,7 @@ CREATE INDEX id_path ON file_system (path);       \n\
 CREATE INDEX id_parent ON file_system (parent);   \n\
 ";
 
-  sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
+  //sqlite3_exec(db, INIT_FS_TABLE, NULL, NULL, NULL);
   
   // In our new implementation, we store the latest version of the file, and version history in database,
   // and when opening with write permission, nothing is copied, and there's no notion of a temp_version while writing.
@@ -346,7 +351,7 @@ CREATE TABLE IF NOT EXISTS                                   \n\
 CREATE INDEX id_ver ON file_versions (path, version);        \n\
 ";
 
-  sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
+  //sqlite3_exec(db, INIT_VER_TABLE, NULL, NULL, NULL);
   
   // Segment table still stores the version, and does not assume that the signature
   // always belong to the latest version.
@@ -362,7 +367,7 @@ CREATE TABLE IF NOT EXISTS                                        \n\
 CREATE INDEX id_seg ON file_segments (path, version, segment);    \n\
 ";
 
-  sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
+  //sqlite3_exec(db, INIT_SEG_TABLE, NULL, NULL, NULL);
 
   FILE_LOG(LOG_DEBUG) << "main: table creation ok" << endl;
 

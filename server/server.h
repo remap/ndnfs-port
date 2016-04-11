@@ -39,6 +39,15 @@ namespace ndnfs {
     extern const int default_freshness_period;
   }
 }
+//Convert metadataNames to C strings.
+static const char* pathName = "user.path";
+static const char* verName = "user.ver";
+static const char* current_versionName = "user.current_version";
+static const char* mime_typeName = "user.mime_type";
+static const char* ready_signedName = "user.ready_signed";
+static const char* fileTypeName = "user.type";
+
+
 
 void abs_path(char *dest, const char *src);
 
