@@ -28,7 +28,7 @@ Download and install [OSXFUSE](http://osxfuse.github.io/2013/05/01/OSXFUSE-2.5.6
 
 * Fuse (tested with 2.5.6)
 <pre>
-    $ sudo apt-get install fuse
+    $ sudo apt-get install fuse libfuse-dev
 </pre>
 * pkgconfig
 <pre>
