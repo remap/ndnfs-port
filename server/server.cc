@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
   }
   
   // TODO: debug daemonize start failure on OSX
+  /*
   pid_t pid, sid;
   pid = fork();
   if (pid < 0) {
@@ -94,7 +95,8 @@ int main(int argc, char **argv) {
   }
 
   umask(0);
-  
+  */
+
   // Set up logging
   Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
   FILE* log_fd = fopen(ndnfs::server::logging_path.c_str(), "w" );
@@ -106,6 +108,7 @@ int main(int argc, char **argv) {
   
   FILE_LOG(LOG_DEBUG) << "Ndnfs-server logging." << endl;
   
+  /*
   sid = setsid();
   if (sid < 0) {
     cerr << "main: setsid sid < 0" << endl;
@@ -120,6 +123,7 @@ int main(int argc, char **argv) {
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
+  */
 
   // Actual ndnfs code
   // Initialize the keychain

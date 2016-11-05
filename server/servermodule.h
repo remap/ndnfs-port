@@ -37,6 +37,7 @@
 #include <ndn-cpp/security/identity/osx-private-key-storage.hpp>
 #include <ndn-cpp/security/identity/memory-private-key-storage.hpp>
 
+#undef TYPE_BOOL
 #include "dir.pb.h"
 #include "file.pb.h"
 #include "namespace.h"
