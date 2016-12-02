@@ -131,7 +131,7 @@ void Handler::onFileData (const ptr_lib::shared_ptr<const Interest>& interest, c
   if (doVerification_) {
     keyChain_.verifyData
       (data, bind(&Handler::onVerified, this, _1), 
-       bind(&Handler::onVerifyFailed, this, _1));
+       (const OnVerifyFailed)bind(&Handler::onVerifyFailed, this, _1));
   } else {
     cout << "Verification skipped." << endl;
   }
