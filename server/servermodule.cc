@@ -307,7 +307,7 @@ int sendFileContent(Name interest_name, string path, int version, int seg, ndn::
     FILE_LOG(LOG_DEBUG) << "sendFileContent: File is empty. Name: " << data.getName().toUri() << endl;
   }
   
-  delete output;
+  delete[] output;
   return actual_len;
 }
 
@@ -367,7 +367,7 @@ int sendFileMeta(const string& path, const string& mimeType, int version, FileTy
   
   FILE_LOG(LOG_DEBUG) << "sendFileMeta: Data returned with name: " << name.toUri() << endl;
   
-  delete wireData;
+  delete[] wireData;
   return 0;
 }
 
