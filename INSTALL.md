@@ -67,3 +67,10 @@ Optionally, instead of "./waf configure" you can enter:
 <pre>
     $ ./waf configure --debug
 </pre>
+
+### Note
+
+On Ubuntu 14.04, if boost is installed in "/usr/lib/x86_64-linux-gnu/" and waf configure cannot figure out boost lib path, can do
+<pre>
+    $ ./waf configure --boost-lib=/usr/lib/x86_64-linux-gnu/
+</pre>
