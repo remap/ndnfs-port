@@ -74,9 +74,9 @@ will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs
 For a quick test, please make sure that you have NFD, NDNFS-server and NDNFS running. Assuming that the default configuration is used, you can do
 <pre>
     $ echo "Hello, world!" > /tmp/ndnfs/test.txt
-    $ ndn-tlv-peek -pf /ndn/broadcast/ndnfs/test
+    $ ndnpeek -pf /ndn/broadcast/ndnfs/test.txt
 </pre>
-to see the file test.txt being served over NDN. 
+to see the file test.txt being served over NDN. (ndnpeek requires [ndntools](https://github.com/named-data/ndn-tools) to be installed)
 
 ### NDNFS-client
 
