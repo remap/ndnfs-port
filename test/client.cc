@@ -172,89 +172,89 @@ void usage() {
 int main (int argc, char **argv) {
   int opt;
   while ((opt = getopt(argc, argv, "h:")) != -1) {
-	switch (opt) {
-	case 'h': 
-	  usage();
-	  break;
-	default: 
-	  usage();
-	  break;
-	}
+    switch (opt) {
+    case 'h': 
+      usage();
+      break;
+    default: 
+      usage();
+      break;
+    }
   }
 
   // Initialize the keychain
   ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new MemoryIdentityStorage());
   ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new MemoryPrivateKeyStorage());
   keyChain.reset
-	(new KeyChain
-	  (ptr_lib::make_shared<IdentityManager>
-		(identityStorage, privateKeyStorage), ptr_lib::shared_ptr<NoVerifyPolicyManager>
-		  (new NoVerifyPolicyManager())));
+    (new KeyChain
+      (ptr_lib::make_shared<IdentityManager>
+        (identityStorage, privateKeyStorage), ptr_lib::shared_ptr<NoVerifyPolicyManager>
+          (new NoVerifyPolicyManager())));
   
   // Initialize the storage.
   Name keyName("/testname/DSK-123");
   certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
-		 (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
+         (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
   identityStorage->addKey(keyName, KEY_TYPE_RSA, Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
   privateKeyStorage->setKeyPairForKeyName
-	(keyName, KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
-	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
-	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
+    (keyName, KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
+     sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
+     sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
   
   face.setCommandSigningInfo(*keyChain, certificateName);
 
   while (true) {
     if (isStdinReady()) {
       string input = stdinReadLine();
-	  if (strstr(input.c_str(), SHOW_COMMAND)) {
-		string nameStr = input.substr(strlen(SHOW_COMMAND));
-		
-		cout << "Displaying info of file by name: " << nameStr << endl;
-		
-		Handler handler(face, *(keyChain.get()), nameStr);
-		Name name(nameStr);
-		Interest interest(name);
-		interest.setMustBeFresh(true);
-		interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
-		
-		// AttrData is the protobuf encoded info about a file or folder
-		face.expressInterest
-		  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
-		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
-	  }
-	  else if (strstr(input.c_str(), FETCH_COMMAND)) {
-		vector<string> nameStrs = split(input.substr(strlen(FETCH_COMMAND)), ' ');
-		if (nameStrs.size() != 2) {
-		  cout << "Expecting 2 inputs, ndnfs file name, and write file name" << endl;
-		  continue;
-		}
-		cout << "Saving file: " << nameStrs[0] << " to " << nameStrs[1] << endl;
-		
-		Handler handler(face, *(keyChain.get()), nameStrs[0], nameStrs[1], true, true);
-		Name name(nameStrs[0]);
-		Interest interest(name);
-		interest.setMustBeFresh(true);
-		interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
-		
-		// AttrData is the protobuf encoded info about a file or folder
-		face.expressInterest
-		  (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
-		   ptr_lib::bind(&Handler::onTimeout, &handler, _1));
-	  }
-	  else if (strstr(input.c_str(), HELP_COMMAND)) {
-	    cout << "Displaying help:" << endl;
-	    cout << "> " << SHOW_COMMAND << "[NDN name]: Show the content/meta of a folder/file." << endl;
-	    cout << "> " << FETCH_COMMAND << "[NDN name] [local file name]: Fetch a file and save it locally." << endl;
-	    cout << "> " << HELP_COMMAND << ": Show help." << endl;
-	  }
-	  else {
-		cout << input << ": Command unknown." << endl;
-	  }
-	}
+      if (strstr(input.c_str(), SHOW_COMMAND)) {
+        string nameStr = input.substr(strlen(SHOW_COMMAND));
+        
+        cout << "Displaying info of file by name: " << nameStr << endl;
+        
+        Handler handler(face, *(keyChain.get()), nameStr);
+        Name name(nameStr);
+        Interest interest(name);
+        interest.setMustBeFresh(true);
+        interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
+        
+        // AttrData is the protobuf encoded info about a file or folder
+        face.expressInterest
+          (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
+           ptr_lib::bind(&Handler::onTimeout, &handler, _1));
+      }
+      else if (strstr(input.c_str(), FETCH_COMMAND)) {
+        vector<string> nameStrs = split(input.substr(strlen(FETCH_COMMAND)), ' ');
+        if (nameStrs.size() != 2) {
+          cout << "Expecting 2 inputs, ndnfs file name, and write file name" << endl;
+          continue;
+        }
+        cout << "Saving file: " << nameStrs[0] << " to " << nameStrs[1] << endl;
+        
+        Handler handler(face, *(keyChain.get()), nameStrs[0], nameStrs[1], true, true);
+        Name name(nameStrs[0]);
+        Interest interest(name);
+        interest.setMustBeFresh(true);
+        interest.setInterestLifetimeMilliseconds(DEFAULT_INTEREST_LIFETIME_MILLISECONDS);
+        
+        // AttrData is the protobuf encoded info about a file or folder
+        face.expressInterest
+          (interest, ptr_lib::bind(&Handler::onAttrData, &handler, _1, _2), 
+           ptr_lib::bind(&Handler::onTimeout, &handler, _1));
+      }
+      else if (strstr(input.c_str(), HELP_COMMAND)) {
+        cout << "Displaying help:" << endl;
+        cout << "> " << SHOW_COMMAND << "[NDN name]: Show the content/meta of a folder/file." << endl;
+        cout << "> " << FETCH_COMMAND << "[NDN name] [local file name]: Fetch a file and save it locally." << endl;
+        cout << "> " << HELP_COMMAND << ": Show help." << endl;
+      }
+      else {
+        cout << input << ": Command unknown." << endl;
+      }
+    }
 
-	face.processEvents();
-	// We need to sleep for a few milliseconds so we don't use 100% of the CPU.
-	usleep(10000);
+    face.processEvents();
+    // We need to sleep for a few milliseconds so we don't use 100% of the CPU.
+    usleep(10000);
   }
   
   return 0;

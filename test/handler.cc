@@ -51,7 +51,12 @@ void Handler::onAttrData(const ptr_lib::shared_ptr<const Interest>& interest, co
       }
     }
     else{
-      cerr << "Protobuf decoding error" << endl;
+      cerr << "Protobuf decoding error. "
+           << "This may be caused by a browser friendly format use by the server. "
+           << "The original message is dumped below."
+           << endl;
+      string dir_html((char*)content.buf(), content.size());
+      cerr << dir_html << endl;
     }
   }
   else if (marker == NdnfsNamespace::fileComponentName_) {

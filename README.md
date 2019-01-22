@@ -67,7 +67,7 @@ Use '-p' flag to configure prefix, '-d' flag to select db file, and '-f' flag to
 
 For example,
 <pre>
-    $ ./build/ndnfs-server -p /ndn/broadcast/ndnfs -l ndnfs-server.log -f /tmp/ndnfs -d ndnfs.db
+    $ ./build/ndnfs-server -p /ndn/broadcast/ndnfs -l ndnfs-server.log -f /tmp/ndnfs -d /tmp/ndnfs.db
 </pre>
 will serve content in mount point /tmp/ndnfs, using prefix "/ndn/broadcast/ndnfs", writing logs to ndnfs-server.log, and using ndnfs.db as database file in running directory.
 

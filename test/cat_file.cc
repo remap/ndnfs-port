@@ -212,11 +212,11 @@ void onFileData (const ptr_lib::shared_ptr<const Interest>& interest, const ptr_
     cout << "FinalBlockId : " << data->getMetaInfo().getFinalBlockId().toSegment() << endl;
     
     if (do_verification) {
-		key_chain->verifyData(data, onVerified, onVerifyFailed);
-	}
-	else {
-		cout << "Verification skipped." << endl;
-	}
+        key_chain->verifyData(data, onVerified, onVerifyFailed);
+    }
+    else {
+        cout << "Verification skipped." << endl;
+    }
     
     current_seg = (int)(data_name.rbegin()->toSegment());
     current_seg++;  // segments are zero-indexed
@@ -244,14 +244,14 @@ void onTimeout (const ptr_lib::shared_ptr<const Interest>& origInterest) {
 }
 
 void usage () {
-	fprintf(stderr, "usage: ./cat_file [-n name]\n");
-	exit(1);
+    fprintf(stderr, "usage: ./cat_file [-n name]\n");
+    exit(1);
 }
 
 int main (int argc, char **argv) {
     ptr_lib::shared_ptr<Interest> interestPtr(new Interest());
 
-	const char* name = NULL;
+    const char* name = NULL;
     bool repo_mode = false;
 
     // Initialize the keychain
@@ -275,9 +275,9 @@ int main (int argc, char **argv) {
     
     handler.setCommandSigningInfo(*key_chain, certificate_name);
 
-	int opt;
-	while ((opt = getopt(argc, argv, "n:r:v")) != -1) {
-		switch (opt) {
+    int opt;
+    while ((opt = getopt(argc, argv, "n:r:v")) != -1) {
+        switch (opt) {
         case 'n':
             name = optarg;
             cout << "main(): set name: " << name << endl;
@@ -292,7 +292,7 @@ int main (int argc, char **argv) {
             usage(); 
             break;
         }
-	}
+    }
     
     if (repo_mode) {
         file_name = Name(name);
@@ -309,16 +309,16 @@ int main (int argc, char **argv) {
         interestPtr->setName(Name(name).append(Name::fromEscapedString("%C1.FS.file")));
         //interestPtr->setAnswerOriginKind(0);
         handler.expressInterest(*interestPtr, onMetaData, onTimeout);
-	}
+    }
 
-	cout << "Started..." << endl;
+    cout << "Started..." << endl;
 
-	while (!done) {
+    while (!done) {
         handler.processEvents();
         usleep (10000);
     }
 
     //ofs.close();
 
-	return 0;
+    return 0;
 }

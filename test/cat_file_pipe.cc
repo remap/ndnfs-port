@@ -131,8 +131,8 @@ void onTimeout (const ptr_lib::shared_ptr<const Interest>& origInterest) {
 }
 
 void Usage () {
-	fprintf(stderr, "usage: ./cat_file [-n name]\n");
-	exit(1);
+    fprintf(stderr, "usage: ./cat_file [-n name]\n");
+    exit(1);
 }
 
 
@@ -140,9 +140,9 @@ int main (int argc, char **argv) {
     const char* name = NULL;
     bool repo_mode = false;
 
-	int opt;
-	while ((opt = getopt(argc, argv, "n:r")) != -1) {
-		switch (opt) {
+    int opt;
+    while ((opt = getopt(argc, argv, "n:r")) != -1) {
+        switch (opt) {
         case 'n': 
             name = optarg;
             cout << "main(): set name: " << name << endl;
@@ -155,7 +155,7 @@ int main (int argc, char **argv) {
             Usage(); 
             break;
         }
-	}
+    }
     
     if (repo_mode) {
         file_name = Name(name);
@@ -175,16 +175,16 @@ int main (int argc, char **argv) {
         interestPtr->setName(Name(name).append("%C1.FS.file"));
         //interestPtr->setAnswerOriginKind(0);
         handler.expressInterest(*interestPtr, onMetaData, onTimeout);
-	}
+    }
 
-	cout << "Started..." << endl;
+    cout << "Started..." << endl;
 
-	while (!done) {
+    while (!done) {
         handler.processEvents();
         usleep (10);
     }
 
     //ofs.close();
 
-	return 0;
+    return 0;
 }
