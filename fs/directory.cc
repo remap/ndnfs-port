@@ -39,15 +39,15 @@ int ndnfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t off
   dp = opendir(fullPath);
   
   if (dp == NULL)
-	return -errno;
+    return -errno;
 
   while ((de = readdir(dp)) != NULL) {
-	struct stat st;
-	memset(&st, 0, sizeof(st));
-	st.st_ino = de->d_ino;
-	st.st_mode = de->d_type << 12;
-	if (filler(buf, de->d_name, &st, 0))
-	  break;
+    struct stat st;
+    memset(&st, 0, sizeof(st));
+    st.st_ino = de->d_ino;
+    st.st_mode = de->d_type << 12;
+    if (filler(buf, de->d_name, &st, 0))
+      break;
   }
 
   closedir(dp);
@@ -69,8 +69,8 @@ int ndnfs_mkdir(const char *path, mode_t mode)
   int ret = mkdir(fullPath, mode);
 
   if (ret == -1) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
-	return -errno;
+    FILE_LOG(LOG_ERROR) << "ndnfs_mkdir: mkdir failed. Errno: " << errno << endl;
+    return -errno;
   }
   
   return 0;
@@ -86,8 +86,8 @@ int ndnfs_rmdir(const char *path)
   FILE_LOG(LOG_DEBUG) << "ndnfs_rmdir: path=" << path << endl;
 
   if (strcmp(path, "/") == 0) {
-	// Cannot remove root dir.
-	return -EINVAL;
+    // Cannot remove root dir.
+    return -EINVAL;
   }
   
   char fullPath[PATH_MAX];
@@ -95,8 +95,8 @@ int ndnfs_rmdir(const char *path)
   int ret = rmdir(fullPath);
 
   if (ret == -1) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_rmdir: rmdir failed. Errno: " << errno << endl;
-	return -errno;
+    FILE_LOG(LOG_ERROR) << "ndnfs_rmdir: rmdir failed. Errno: " << errno << endl;
+    return -errno;
   }
   
   return 0;

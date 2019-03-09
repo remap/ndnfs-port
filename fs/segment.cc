@@ -50,10 +50,10 @@ int sign_segment(const char* path, int ver, int seg, const char *data, int len)
   string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
   // The "/" was escaped, so unescape.
   while(1) {
-	size_t found = escapedString.find("%2F");
-	if (found == string::npos) 
-	  break;
-	escapedString.replace(found, 3, "/");
+    size_t found = escapedString.find("%2F");
+    if (found == string::npos) 
+      break;
+    escapedString.replace(found, 3, "/");
   }
   Name seg_name(escapedString);
   
@@ -124,69 +124,69 @@ void truncate_segment(const char* path, const int ver, const int seg, const off_
   sqlite3_bind_int(stmt, 3, seg);
   
   if(sqlite3_step(stmt) == SQLITE_ROW) {
-	if (length == 0) {
-	  sqlite3_finalize(stmt);
-	  sqlite3_prepare_v2(db, "DELETE FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
-	  sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
-	  sqlite3_bind_int(stmt, 2, ver);
-	  sqlite3_bind_int(stmt, 3, seg);
-	  sqlite3_step(stmt);
-	  sqlite3_finalize(stmt);
-	} else {
-	  // the file is already truncated, so we only update the signature here.
-	  char fullPath[PATH_MAX];
-	  abs_path(fullPath, path);
-	  int fd = open(fullPath, O_RDONLY);
-	  if (fd == -1) {
-		FILE_LOG(LOG_ERROR) << "truncate_segment: open error. Errno: " << errno << endl;
-		return;
-	  }
+    if (length == 0) {
+      sqlite3_finalize(stmt);
+      sqlite3_prepare_v2(db, "DELETE FROM file_segments WHERE path = ? AND version = ? AND segment = ?;", -1, &stmt, 0);
+      sqlite3_bind_text(stmt, 1, path, -1, SQLITE_STATIC);
+      sqlite3_bind_int(stmt, 2, ver);
+      sqlite3_bind_int(stmt, 3, seg);
+      sqlite3_step(stmt);
+      sqlite3_finalize(stmt);
+    } else {
+      // the file is already truncated, so we only update the signature here.
+      char fullPath[PATH_MAX];
+      abs_path(fullPath, path);
+      int fd = open(fullPath, O_RDONLY);
+      if (fd == -1) {
+        FILE_LOG(LOG_ERROR) << "truncate_segment: open error. Errno: " << errno << endl;
+        return;
+      }
       
       char *data = new char[ndnfs::seg_size];
-	  int read_len = pread(fd, data, length, segment_to_size(seg));
-	  if (read_len < 0) {
-		FILE_LOG(LOG_ERROR) << "truncate_segment: write error. Errno: " << errno << endl;
-		return;
-	  }
+      int read_len = pread(fd, data, length, segment_to_size(seg));
+      if (read_len < 0) {
+        FILE_LOG(LOG_ERROR) << "truncate_segment: write error. Errno: " << errno << endl;
+        return;
+      }
   
-	  string file_path(path);
-	  string full_name = ndnfs::global_prefix + file_path;
-	  // We want the Name(uri) constructor to split the path into components between "/", but we first need
-	  // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
-	  // from the raw string and use its toEscapedString.
+      string file_path(path);
+      string full_name = ndnfs::global_prefix + file_path;
+      // We want the Name(uri) constructor to split the path into components between "/", but we first need
+      // to escape the characters in full_name which the Name(uri) constructor will unescape.  So, create a component
+      // from the raw string and use its toEscapedString.
   
-	  string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
-	  // The "/" was escaped, so unescape.
-	  while(1) {
-		size_t found = escapedString.find("%2F");
-		if (found == string::npos) break;
-		escapedString.replace(found, 3, "/");
-	  }
-	  Name seg_name(escapedString);
+      string escapedString = Name::Component((uint8_t*)&full_name[0], full_name.size()).toEscapedString();
+      // The "/" was escaped, so unescape.
+      while(1) {
+        size_t found = escapedString.find("%2F");
+        if (found == string::npos) break;
+        escapedString.replace(found, 3, "/");
+      }
+      Name seg_name(escapedString);
   
-	  seg_name.appendVersion(ver);
-	  seg_name.appendSegment(seg);
+      seg_name.appendVersion(ver);
+      seg_name.appendSegment(seg);
       
       Data trunc_data;
-	  trunc_data.setContent((const uint8_t*)data, length);
+      trunc_data.setContent((const uint8_t*)data, length);
   
-	  ndnfs::keyChain->sign(trunc_data, ndnfs::certificateName);
-	  Blob signature = trunc_data.getSignature()->getSignature();
+      ndnfs::keyChain->sign(trunc_data, ndnfs::certificateName);
+      Blob signature = trunc_data.getSignature()->getSignature();
   
-	  const char* sig_raw = (const char*)signature.buf();
-	  int sig_size = signature.size();
-	  
-	  sqlite3_finalize(stmt);	
-	  sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature) VALUES (?,?,?,?);", -1, &stmt, 0);
-	  sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
-	  sqlite3_bind_int(stmt,2,ver);
-	  sqlite3_bind_int(stmt,3,seg);
-	  sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
-	  sqlite3_step(stmt);
-	  sqlite3_finalize(stmt);
+      const char* sig_raw = (const char*)signature.buf();
+      int sig_size = signature.size();
+      
+      sqlite3_finalize(stmt);    
+      sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO file_segments (path,version,segment,signature) VALUES (?,?,?,?);", -1, &stmt, 0);
+      sqlite3_bind_text(stmt,1,path,-1,SQLITE_STATIC);
+      sqlite3_bind_int(stmt,2,ver);
+      sqlite3_bind_int(stmt,3,seg);
+      sqlite3_bind_blob(stmt,4,sig_raw,sig_size,SQLITE_STATIC);
+      sqlite3_step(stmt);
+      sqlite3_finalize(stmt);
   
-	  delete data;
-	  close(fd);
-	}
+      delete data;
+      close(fd);
+    }
   }
 }

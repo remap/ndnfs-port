@@ -33,8 +33,8 @@ int ndnfs_getattr(const char *path, struct stat *stbuf)
   int ret = lstat(fullPath, stbuf);
   
   if (ret == -1) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_getattr: get_attr failed. Full path " << fullPath << ". Errno " << errno << endl;
-	return -errno;
+    FILE_LOG(LOG_ERROR) << "ndnfs_getattr: get_attr failed. Full path " << fullPath << ". Errno " << errno << endl;
+    return -errno;
   }
   return ret;
 }
@@ -49,8 +49,8 @@ int ndnfs_chmod(const char *path, mode_t mode)
   
   int res = chmod(fullPath, mode);
   if (res == -1) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_chmod: chmod failed. Errno: " << -errno << endl;
-	return -errno;
+    FILE_LOG(LOG_ERROR) << "ndnfs_chmod: chmod failed. Errno: " << -errno << endl;
+    return -errno;
   }
   return 0;
 }

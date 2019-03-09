@@ -128,24 +128,24 @@ int ndnfs_mknod (const char *path, mode_t mode, dev_t dev)
  
   switch (S_IFMT & mode) 
   {
-	case S_IFDIR: 
-	  // expect this to call mkdir instead
-	  break;
-	case S_IFCHR:
-	  fileType = CHARACTER_SPECIAL;
-	  break;
-	case S_IFREG: 
-	  fileType = REGULAR;
-	  break;
-	case S_IFLNK: 
-	  fileType = SYMBOLIC_LINK;
-	  break;
-	case S_IFSOCK: 
-	  fileType = UNIX_SOCKET;
-	  break;
-	case S_IFIFO: 
-	  fileType = FIFO_SPECIAL;
-	  break;
+    case S_IFDIR: 
+      // expect this to call mkdir instead
+      break;
+    case S_IFCHR:
+      fileType = CHARACTER_SPECIAL;
+      break;
+    case S_IFREG: 
+      fileType = REGULAR;
+      break;
+    case S_IFLNK: 
+      fileType = SYMBOLIC_LINK;
+      break;
+    case S_IFSOCK: 
+      fileType = UNIX_SOCKET;
+      break;
+    case S_IFIFO: 
+      fileType = FIFO_SPECIAL;
+      break;
     default:
       fileType = REGULAR;
       break;
@@ -409,7 +409,7 @@ int ndnfs_readlink(const char *path, char *buf, size_t size)
   
   res = readlink(full_path, buf, size - 1);
   if (res == -1)
-	return -errno;
+    return -errno;
 
   buf[res] = '\0';
   return 0;
@@ -470,7 +470,7 @@ int ndnfs_symlink(const char *from, const char *to)
   
   res = symlink(full_path_from, full_path_to);
   if (res == -1)
-	return -errno;
+    return -errno;
 
   return 0;
 }
@@ -493,7 +493,7 @@ int ndnfs_link(const char *from, const char *to)
   
   res = link(full_path_from, full_path_to);
   if (res == -1)
-	return -errno;
+    return -errno;
 
   return 0;
 }
@@ -514,8 +514,8 @@ int ndnfs_rename(const char *from, const char *to)
   sqlite3_step(stmt);
 
   if (res != SQLITE_OK && res != SQLITE_DONE) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_system error. " << res << endl;
-	return res;
+    FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_system error. " << res << endl;
+    return res;
   }
   sqlite3_finalize (stmt);
 
@@ -525,8 +525,8 @@ int ndnfs_rename(const char *from, const char *to)
   sqlite3_step(stmt);
 
   if (res != SQLITE_OK && res != SQLITE_DONE) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_versions error. " << res << endl;
-	return res;
+    FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_versions error. " << res << endl;
+    return res;
   }
   sqlite3_finalize (stmt);
 
@@ -536,8 +536,8 @@ int ndnfs_rename(const char *from, const char *to)
   sqlite3_step(stmt);
 
   if (res != SQLITE_OK && res != SQLITE_DONE) {
-	FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_segments error. " << res << endl;
-	return res;
+    FILE_LOG(LOG_ERROR) << "ndnfs_rename: update file_segments error. " << res << endl;
+    return res;
   }
   sqlite3_finalize (stmt);
     
@@ -552,7 +552,7 @@ int ndnfs_rename(const char *from, const char *to)
   
   FILE_LOG(LOG_ERROR) << "ndnfs_rename: rename should trigger resign of everything, which is not yet implemented" << endl;
   if (res == -1)
-	return -errno;
+    return -errno;
 
   return 0;
 }

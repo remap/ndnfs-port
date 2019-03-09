@@ -62,23 +62,23 @@ int main(int argc, char **argv) {
   // Parse command parameters
   int opt;
   while ((opt = getopt(argc, argv, "p:f:l:d:")) != -1) {
-	switch (opt) {
-	case 'p':
-	  ndnfs::server::fs_prefix.assign(optarg);
-	  break;
-	case 'f':
-	  ndnfs::server::fs_path.assign(optarg);
-	  break;
-	case 'l':
-	  ndnfs::server::logging_path.assign(optarg);
-	  break;
-	case 'd':
-	  ndnfs::server::db_name.assign(optarg);
-	  break;
-	default:
-	  usage();
-	  break;
-	}
+    switch (opt) {
+    case 'p':
+      ndnfs::server::fs_prefix.assign(optarg);
+      break;
+    case 'f':
+      ndnfs::server::fs_path.assign(optarg);
+      break;
+    case 'l':
+      ndnfs::server::logging_path.assign(optarg);
+      break;
+    case 'd':
+      ndnfs::server::db_name.assign(optarg);
+      break;
+    default:
+      usage();
+      break;
+    }
   }
   
   // TODO: debug daemonize start failure on OSX
@@ -87,11 +87,11 @@ int main(int argc, char **argv) {
   pid = fork();
   if (pid < 0) {
     cerr << "main: fork PID < 0" << endl;
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
   if (pid > 0) {
     cerr << "main: daemonize start" << endl;
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
   }
 
   umask(0);
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
   Log<Output2FILE>::reportingLevel() = LOG_DEBUG;
   FILE* log_fd = fopen(ndnfs::server::logging_path.c_str(), "w" );
   if (ndnfs::server::logging_path == "" || log_fd == NULL) {
-	Output2FILE::stream() = stdout;
+    Output2FILE::stream() = stdout;
   } else {
     Output2FILE::stream() = log_fd;
   }
@@ -112,12 +112,12 @@ int main(int argc, char **argv) {
   sid = setsid();
   if (sid < 0) {
     cerr << "main: setsid sid < 0" << endl;
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   if ((chdir("/")) < 0) {
     cerr << "main: chdir failed." << endl;
-	exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   close(STDIN_FILENO);
@@ -130,29 +130,29 @@ int main(int argc, char **argv) {
   ndn::ptr_lib::shared_ptr<ndn::MemoryIdentityStorage> identityStorage(new ndn::MemoryIdentityStorage());
   ndn::ptr_lib::shared_ptr<ndn::MemoryPrivateKeyStorage> privateKeyStorage(new ndn::MemoryPrivateKeyStorage());
   ndnfs::server::keyChain.reset
-	(new ndn::KeyChain
-	  (ndn::ptr_lib::make_shared<ndn::IdentityManager>
-		(identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
-		  (new ndn::NoVerifyPolicyManager())));
+    (new ndn::KeyChain
+      (ndn::ptr_lib::make_shared<ndn::IdentityManager>
+        (identityStorage, privateKeyStorage), ndn::ptr_lib::shared_ptr<ndn::NoVerifyPolicyManager>
+          (new ndn::NoVerifyPolicyManager())));
   
   // Initialize the storage.
   ndn::Name keyName("/testname/DSK-123");
   ndnfs::server::certificateName = keyName.getSubName(0, keyName.size() - 1).append("KEY").append
-		 (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
+         (keyName.get(keyName.size() - 1)).append("ID-CERT").append("0");
   identityStorage->addKey(keyName, ndn::KEY_TYPE_RSA, ndn::Blob(DEFAULT_RSA_PUBLIC_KEY_DER, sizeof(DEFAULT_RSA_PUBLIC_KEY_DER)));
   privateKeyStorage->setKeyPairForKeyName
-	(keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
-	 sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
-	 sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
+    (keyName, ndn::KEY_TYPE_RSA, DEFAULT_RSA_PUBLIC_KEY_DER,
+     sizeof(DEFAULT_RSA_PUBLIC_KEY_DER), DEFAULT_RSA_PRIVATE_KEY_DER,
+     sizeof(DEFAULT_RSA_PRIVATE_KEY_DER));
   
   face.setCommandSigningInfo(*ndnfs::server::keyChain, ndnfs::server::certificateName);
   
   if (sqlite3_open(ndnfs::server::db_name.c_str(), &ndnfs::server::db) == SQLITE_OK) {
     FILE_LOG(LOG_DEBUG) << "main: sqlite database open ok" << endl;
   } else {
-	FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db: " << ndnfs::server::db_name << ", quit" << endl;
-	sqlite3_close(ndnfs::server::db);
-	return -1;
+    FILE_LOG(LOG_DEBUG) << "main: cannot connect to sqlite db: " << ndnfs::server::db_name << ", quit" << endl;
+    sqlite3_close(ndnfs::server::db);
+    return -1;
   }
 
   FILE_LOG(LOG_DEBUG) << "main: db file: " << ndnfs::server::db_name << endl;

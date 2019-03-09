@@ -25,10 +25,10 @@
 
 namespace ndnfs {
   namespace server {
-	extern sqlite3 *db;
-	extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
-	extern ndn::Name certificateName;
-	
+    extern sqlite3 *db;
+    extern ndn::ptr_lib::shared_ptr<ndn::KeyChain> keyChain;
+    extern ndn::Name certificateName;
+    
     extern std::string db_name;
     extern std::string fs_path;
     extern std::string fs_prefix;

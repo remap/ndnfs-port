@@ -51,42 +51,42 @@ int truncate_version(const char* path, const int ver, off_t length)
   sqlite3_bind_int (stmt, 2, ver);
 
   if (sqlite3_step (stmt) != SQLITE_ROW) {
-	// Should not happen
-	sqlite3_finalize (stmt);
-	return -1;
+    // Should not happen
+    sqlite3_finalize (stmt);
+    return -1;
   }
   
   int size = sqlite3_column_int (stmt, 2);
   sqlite3_finalize (stmt);
   
   if ((size_t) length == size) {
-	return 0;
+    return 0;
   }
   else if ((size_t) length < size) {
-	// Truncate to length
-	int seg_end = seek_segment (length);
+    // Truncate to length
+    int seg_end = seek_segment (length);
 
-	sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? and version = ?;", -1, &stmt, 0);
-	sqlite3_bind_int (stmt, 1, (int) length);
-	sqlite3_bind_int (stmt, 2, seg_end);
-	sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
-	sqlite3_bind_int (stmt, 4, ver);
-	int res = sqlite3_step (stmt);
-	sqlite3_finalize (stmt);
-	if (res != SQLITE_OK && res != SQLITE_DONE)
-	  return -1;
+    sqlite3_prepare_v2 (db, "UPDATE file_versions SET size = ?, totalSegments = ? WHERE path = ? and version = ?;", -1, &stmt, 0);
+    sqlite3_bind_int (stmt, 1, (int) length);
+    sqlite3_bind_int (stmt, 2, seg_end);
+    sqlite3_bind_text (stmt, 3, path, -1, SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 4, ver);
+    int res = sqlite3_step (stmt);
+    sqlite3_finalize (stmt);
+    if (res != SQLITE_OK && res != SQLITE_DONE)
+      return -1;
 
-	// Update version size and segment list
-	int tail = length - segment_to_size (seg_end);
-	
-	truncate_segment (path, ver, seg_end, tail);
-	remove_segments (path, ver, seg_end + 1);
-	
-	return 0;
+    // Update version size and segment list
+    int tail = length - segment_to_size (seg_end);
+    
+    truncate_segment (path, ver, seg_end, tail);
+    remove_segments (path, ver, seg_end + 1);
+    
+    return 0;
   }
   else {
-	// TODO: pad with zeros
-	return -1;
+    // TODO: pad with zeros
+    return -1;
   }
 }
 

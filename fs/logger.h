@@ -16,8 +16,10 @@ inline const char* toString(LogLevel l)
 {
   switch (l)
   {
-	case LOG_ERROR:	return "ERROR";
-	default:		return "DEBUG";
+    case LOG_ERROR:
+      return "ERROR";
+    default:
+      return "DEBUG";
   }
 }
 
@@ -52,18 +54,18 @@ public:
   
   virtual ~Log()
   {
-	OutputPolicy::output(os.str());
+    OutputPolicy::output(os.str());
   }
   
   std::ostringstream& get(LogLevel level = LOG_DEBUG)
   {
-	std::time_t time = std::time(nullptr);  
-	os << "- " << time;
-	os << " " << toString(level) << ": ";
-	
-	os << std::string(level > LOG_DEBUG ? level - LOG_DEBUG : 0, '\t');
-	logLevel_ = level;
-	return os;
+    std::time_t time = std::time(nullptr);  
+    os << "- " << time;
+    os << " " << toString(level) << ": ";
+    
+    os << std::string(level > LOG_DEBUG ? level - LOG_DEBUG : 0, '\t');
+    logLevel_ = level;
+    return os;
   }
 public:
   static LogLevel& reportingLevel()
